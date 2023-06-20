@@ -37,7 +37,7 @@ setup(
     ],
     entry_points={
      "console_scripts": [
-         "download=getpaper.download:app"
+         "download=getpaper.download:app",
          "parse=getpaper.parse:app"
      ]
     }
