@@ -31,3 +31,10 @@ You can also parse papers on a per file basis, for example:
 ```bash
 getpaper/parse.py parse_paper --paper /home/antonkulaga/sources/getpaper/test/22266545.pdf
 ```
+
+# Additional requirements
+
+Detectron2 is required for using models from the layoutparser model zoo but is not automatically installed with this package. 
+For MacOS and Linux, build from source with:
+
+pip install 'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2'

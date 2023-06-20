@@ -23,7 +23,6 @@ setup(
     packages=find_packages(),
     install_requires=['pyfunctional', 'more-itertools', 'click',
                       'unstructured', 'unstructured-inference', 'unstructured[local-inference]', 'unstructured.PaddleOCR',
-                      'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2',
                       'scidownl', 'langchain'],
     keywords=['python', 'utils', 'files', 'papers', 'download'],
     classifiers=[
