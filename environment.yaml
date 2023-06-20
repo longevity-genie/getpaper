@@ -1,0 +1,28 @@
+name: getpaper
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - plotly
+  - defaults
+dependencies:
+  - python=3.10
+  - more-itertools
+  - setuptools
+  - click
+  - tiktoken
+  - python-dotenv
+  - pytorch
+  - tesseract
+  - uvicorn
+  - pip:
+      - pyfunctional
+      - pynction
+      - langchain>=0.0.202
+      - unstructured
+      - unstructured-inference
+      - unstructured[local-inference]
+      - unstructured.PaddleOCR
+      - pycomfort
+      - scidownl
+      - 'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2'
