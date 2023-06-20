@@ -25,4 +25,5 @@ dependencies:
       - unstructured.PaddleOCR
       - pycomfort
       - scidownl
+      - twine
       - 'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2'

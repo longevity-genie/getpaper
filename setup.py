@@ -7,21 +7,24 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.0.1'
+VERSION = '0.0.4'
 DESCRIPTION = 'getpaper - papers download made easy!'
 LONG_DESCRIPTION = 'A package with python functions for downloading papers'
 
 # Setting up
 setup(
-    name="pycomfort",
+    name="getpaper",
     version=VERSION,
-    author="antonkulaga (Anton Kualga)",
+    author="antonkulaga (Anton Kulaga)",
     author_email="<antonkulaga@gmail.com>",
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['pyfunctional', 'more-itertools', 'click', 'unstructured', 'unstructured-inference', 'unstructured[local-inference]', 'unstructured.PaddleOCR', 'scidownl'],
+    install_requires=['pyfunctional', 'more-itertools', 'click',
+                      'unstructured', 'unstructured-inference', 'unstructured[local-inference]', 'unstructured.PaddleOCR',
+                      'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2',
+                      'scidownl', 'langchain'],
     keywords=['python', 'utils', 'files', 'papers', 'download'],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -34,8 +37,8 @@ setup(
     ],
     entry_points={
      "console_scripts": [
-         "download_doi=getpaper.download:download_pubmed",
-         "download_pubmed=getpaper.download:download_pubmed"
+         "download=getpaper.download:app"
+         "parse=getpaper.parse:app"
      ]
     }
 )

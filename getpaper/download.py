@@ -13,7 +13,7 @@ from scidownl import scihub_download
 
 def doi_from_pubmed(pubmed_id: str):
     """
-    resolves doi by pubmedid
+    resolves doi by pubmed id
     :param pubmed_id:
     :return:
     """
