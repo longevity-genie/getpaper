@@ -7,9 +7,9 @@ from typing import Optional
 import click
 import requests
 from click import Context
-from pycomfort.files import with_ext
 from pynction import Try
 from scidownl import scihub_download
+
 
 def doi_from_pubmed(pubmed_id: str):
     """

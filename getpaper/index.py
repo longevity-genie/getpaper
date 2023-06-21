@@ -14,7 +14,7 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma
 from pycomfort.files import *
 
-from parse import papers_to_documents
+from getpaper.parse import papers_to_documents
 from splitter import RecursiveSplitterWithSource
 
 
