@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import click
 import requests
@@ -11,7 +11,7 @@ from langchain.schema import Document
 from pycomfort.files import traverse
 
 def parse_paper(paper: Path, folder: Optional[Path] = None,
-                mode: str = "single", strategy: str = "hi_res",
+                mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
                 include_page_breaks: bool = False
                 ):
@@ -44,7 +44,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
         return acc
 
 def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
-                 mode: str = "single", strategy: str = "hi_res",
+                 mode: str = "single", strategy: str = "auto",
                  pdf_infer_table_structure: bool = True,
                  include_page_breaks: bool = False):
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
@@ -57,6 +57,23 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
     print("papers parsing finished!")
     return acc
 
+def papers_to_documents(folder: Path, suffix: str = ""):
+    txt = traverse(folder, lambda p: "txt" in p.suffix)
+    texts = [t for t in txt if suffix in t.name] if suffix != "" else txt
+    docs: List[Document] = []
+    for t in texts:
+        doi = f"http://doi.org/{t.parent.name}/{t.stem}"
+        with open(t, 'r') as file:
+            text = file.read()
+            if len(text)<10:
+                print("TOO SHORT TEXT")
+            else:
+                doc = Document(
+                    page_content = text,
+                    metadata={"source": doi}
+                )
+                docs.append(doc)
+    return docs
 
 @click.group(invoke_without_command=False)
 @click.pass_context
@@ -70,7 +87,7 @@ def app(ctx: Context):
 @click.option('--paper', type=click.Path(exists=True), help="paper pdf to parse")
 @click.option('--destination', type=click.STRING, default=".", help="destination folder")
 @click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
-@click.option('--strategy', type=click.Choice(["auto", "hi_res"]), default="hi_res", help="parsing strategy to be used, hi-res by default")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
 def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):
@@ -83,7 +100,7 @@ def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, 
 @click.option('--folder', type=click.Path(exists=True), help="folder to parse papers in")
 @click.option('--destination', type=click.STRING, default=None, help="destination folder")
 @click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
-@click.option('--strategy', type=click.Choice(["auto", "hi_res"]), default="hi_res", help="parsing strategy to be used, hi-res by default")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
 def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):

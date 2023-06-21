@@ -7,17 +7,17 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - more-itertools
   - setuptools
-  - click
-  - tiktoken
   - python-dotenv
   - pytorch
   - tesseract
-  - uvicorn
   - pip:
       - pyfunctional
+      - more-itertools
       - pynction
+      - tiktoken
+      - click
+      - python-dotenv
       - langchain>=0.0.202
       - unstructured
       - unstructured-inference

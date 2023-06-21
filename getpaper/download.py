@@ -42,17 +42,34 @@ def try_doi_from_pubmed(pubmed: str) -> Try[str]:
     """
     return Try.of(lambda: doi_from_pubmed(pubmed))
 
-def try_download(doi: str, papers: Path, skip_if_exist: bool = True, name: Optional[str] = None) -> Try[Path]:
+def try_download(doi: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None) -> Try[Path]:
+    """
+    downloads the paper by doi
+    :param doi:
+    :param destination: where to put the results
+    :param skip_if_exist:
+    :param name:
+    :return: Try monad with the result
+    """
     doi_url = f"https://doi.org/{doi}"
-    paper = (papers / f"{doi}.pdf").absolute().resolve() if name is None else (papers / f"{name.replace(',pdf', '')}.pdf").absolute().resolve()
+    paper = (destination / f"{doi}.pdf").absolute().resolve() if name is None else (destination / f"{name.replace(',pdf', '')}.pdf").absolute().resolve()
     if skip_if_exist and paper.exists():
         print(f"Paper {paper} for {doi} already exists!")
-        return paper
+        return Try.of(lambda: paper)
     return Try.of(lambda: scihub_download(doi_url, paper_type="doi", out=str(paper))).map(lambda _: paper)
 
-def download_pubmed(pubmed: str, papers: Path, skip_if_exist: bool = True, name: Optional[str] = None):
+
+def download_pubmed(pubmed: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None):
+    """
+    downloads paper by its pubmed id
+    :param pubmed: pubmed id
+    :param destination: where to store the result
+    :param skip_if_exist:
+    :param name:
+    :return:
+    """
     try_resolve = try_doi_from_pubmed(pubmed)
-    return try_resolve.flat_map(lambda doi: try_download(doi, papers, skip_if_exist, name))
+    return try_resolve.flat_map(lambda doi: try_download(doi, destination, skip_if_exist, name))
 
 
 @click.group(invoke_without_command=False)
@@ -68,7 +85,8 @@ def app(ctx: Context):
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
-def download_doi_command(doi: str, folder: str, skip_existing: bool, name: Optional[str]):
+def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None) -> Try:
+    print(f"downloading {doi} to {folder}")
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
     return try_download(doi, where, skip_existing, name)
