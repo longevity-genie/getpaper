@@ -32,6 +32,11 @@ You can also parse papers on a per file basis, for example:
 getpaper/parse.py parse_paper --paper /home/antonkulaga/sources/getpaper/test/22266545.pdf
 ```
 
+## Indexing papers
+
+We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.
+For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
+
 # Examples
 
 You can run examples.py to see usage examples

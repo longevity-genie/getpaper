@@ -13,10 +13,12 @@ dependencies:
   - tesseract
   - pip:
       - pyfunctional
+      - openai
       - more-itertools
       - pynction
       - tiktoken
       - click
+      - chromadb
       - python-dotenv
       - langchain>=0.0.202
       - unstructured

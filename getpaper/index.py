@@ -28,6 +28,7 @@ def load_environment_keys(debug: bool = True):
     openai_key = os.getenv('OPENAI_API_KEY')
     return openai_key
 
+
 def resolve_embeddings(embeddings_name: str) -> Embeddings:
     if embeddings_name == "openai":
         return OpenAIEmbeddings()
@@ -38,6 +39,7 @@ def resolve_embeddings(embeddings_name: str) -> Embeddings:
     else:
         print(f"{embeddings_name} is not yet supported by CLI, using default openai embeddings instead")
         return OpenAIEmbeddings()
+
 
 def db_with_documents(db: Chroma, documents: list[Document],
                       splitter: TextSplitter,
@@ -51,7 +53,7 @@ def db_with_documents(db: Chroma, documents: list[Document],
         for doc in documents:
             print(f"ADD TEXT: {doc.page_content}")
             print(f"ADD METADATA {doc.metadata}")
-    db.add_texts(texts=texts, metadatas=metadatas, ids = ids)
+    db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
     return db
 
 
@@ -73,13 +75,26 @@ def write_db(persist_directory: Path,
     db_updated.persist()
     return where
 
+
 @click.group(invoke_without_command=False)
 @click.pass_context
 def app(ctx: Context):
-    #if ctx.invoked_subcommand is None:
+    # if ctx.invoked_subcommand is None:
     #    click.echo('Running the default command...')
     #    test_index()
     pass
+
+
+def index_papers(papers_folder: Path, index: Path, collection: str, chunk_size: int, embeddings: str) -> Path:
+    index.mkdir(exist_ok=True)
+    openai_key = load_environment_keys()
+    embeddings_function = resolve_embeddings(embeddings)
+    print(f"embeddings are {embeddings}")
+    where = index / f"{embeddings}_{chunk_size}_chunk"
+    where.mkdir(exist_ok=True, parents=True)
+    print(f"writing index of papers to {where}")
+    documents = papers_to_documents(papers_folder)
+    return write_db(where, collection, documents, chunk_size, embeddings=embeddings_function)
 
 
 @app.command("index_papers")
@@ -87,17 +102,9 @@ def app(ctx: Context):
 @click.option('--folder', type=click.Path(), help="folder to put chroma indexes to")
 @click.option('--collection', default='papers', help='papers collection name')
 @click.option('--chunk_size', type=click.INT, default=6000, help='size of the chunk for splitting')
-@click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai", help='size of the chunk for splitting')
-@click.option('--base', default='.', help='base folder')
-def index_papers(papers: str, folder: str, collection: str, chunk_size: int, embeddings: str,  base: str):
+@click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai",
+              help='size of the chunk for splitting')
+def index_papers_command(papers: str, folder: str, collection: str, chunk_size: int, embeddings: str) -> Path:
     index = Path(folder)
     papers_folder = Path(papers)
-    index.mkdir(exist_ok=True)
-    openai_key = load_environment_keys()
-    embeddings_function = resolve_embeddings(embeddings)
-    print(f"embeddings are {embeddings}")
-    where = index  / f"{embeddings}_{chunk_size}_chunk"
-    where.mkdir(exist_ok=True, parents=True)
-    print(f"writing index of papers to {where}")
-    documents = papers_to_documents(papers_folder)
-    return write_db(where, collection, documents, chunk_size, embeddings = embeddings_function)
+    return index_papers(papers_folder, index, collection, chunk_size, embeddings)
