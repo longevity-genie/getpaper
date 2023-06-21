@@ -22,7 +22,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     :param mode: can be single or paged
     :return:
     """
-    bin_file = open(str(paper), "rb", encoding="utf-8")
+    bin_file = open(str(paper), "rb")
     loader = UnstructuredPDFLoader(file_path=None, file = bin_file,  mode=mode,
                                    pdf_infer_table_structure=pdf_infer_table_structure,
                                    strategy = strategy,
