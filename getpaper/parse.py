@@ -22,7 +22,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     :param mode: can be single or paged
     :return:
     """
-    bin_file = open(str(paper), "rb")
+    bin_file = open(str(paper), "rb", encoding="utf-8")
     loader = UnstructuredPDFLoader(file_path=None, file = bin_file,  mode=mode,
                                    pdf_infer_table_structure=pdf_infer_table_structure,
                                    strategy = strategy,
@@ -63,7 +63,7 @@ def papers_to_documents(folder: Path, suffix: str = ""):
     docs: List[Document] = []
     for t in texts:
         doi = f"http://doi.org/{t.parent.name}/{t.stem}"
-        with open(t, 'r') as file:
+        with open(t, 'r', encoding="utf-8") as file:
             text = file.read()
             if len(text)<10:
                 print("TOO SHORT TEXT")
