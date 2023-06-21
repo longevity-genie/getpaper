@@ -10,7 +10,11 @@ from langchain.document_loaders import UnstructuredPDFLoader
 from langchain.schema import Document
 from pycomfort.files import traverse
 
-def parse_paper(paper: Path, folder: Optional[Path] = None, mode: str = "single"):
+def parse_paper(paper: Path, folder: Optional[Path] = None,
+                mode: str = "single", strategy: str = "hi_res",
+                pdf_infer_table_structure: bool = True,
+                include_page_breaks: bool = False
+                ):
     """
     Parses the paper using Unstructured paper parser
     :param paper:
@@ -18,7 +22,11 @@ def parse_paper(paper: Path, folder: Optional[Path] = None, mode: str = "single"
     :param mode: can be single or paged
     :return:
     """
-    loader = UnstructuredPDFLoader(str(paper), mode=mode)
+    bin_file = open(str(paper), "rb")
+    loader = UnstructuredPDFLoader(file_path=None, file = bin_file,  mode=mode,
+                                   pdf_infer_table_structure=pdf_infer_table_structure,
+                                   strategy = strategy,
+                                    include_page_breaks = include_page_breaks)
     where = paper.parent if folder is None else folder
     docs: list[Document] = loader.load()
     if len(docs) ==1:
@@ -35,14 +43,17 @@ def parse_paper(paper: Path, folder: Optional[Path] = None, mode: str = "single"
             acc.append(f)
         return acc
 
-def parse_papers(parse_folder: Path, mode: str = "single", destination: Optional[Path] = None):
+def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
+                 mode: str = "single", strategy: str = "hi_res",
+                 pdf_infer_table_structure: bool = True,
+                 include_page_breaks: bool = False):
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
     print(f"indexing {len(papers)} papers")
     acc = []
     for i, paper in enumerate(papers):
         where = destination if destination is not None else paper.parent
-        print(f"adding paper {i} out of {len(papers)}, will be saved to {where}")
-        acc = acc + parse_paper(paper, where, mode)
+        print(f"adding paper {paper} which is {i} out of {len(papers)}. It will be saved to {where}")
+        acc = acc + parse_paper(paper, where, mode, strategy, pdf_infer_table_structure, include_page_breaks)
     print("papers parsing finished!")
     return acc
 
@@ -57,23 +68,29 @@ def app(ctx: Context):
 
 @app.command("parse_paper")
 @click.option('--paper', type=click.Path(exists=True), help="paper pdf to parse")
-@click.option('--mode', type=click.Choice(["single", "paged"]), default="single", help="paper mode to be used")
 @click.option('--destination', type=click.STRING, default=".", help="destination folder")
-def parse_paper_command(paper: str, mode: str, destination: str):
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res"]), default="hi_res", help="parsing strategy to be used, hi-res by default")
+@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
+@click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
+def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):
     paper_file = Path(paper)
     destination_folder = Path(destination)
     print(f"parsing paper {paper} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_paper(paper_file, None, mode)
+    return parse_paper(paper_file, None, mode, strategy, infer_tables, include_page_breaks)
 
 @app.command("parse_folder")
 @click.option('--folder', type=click.Path(exists=True), help="folder to parse papers in")
-@click.option('--mode', type=click.Choice(["single", "paged"]), default="single", help="paper mode to be used")
 @click.option('--destination', type=click.STRING, default=None, help="destination folder")
-def parse_paper_command(folder: str, mode: str, destination: str):
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res"]), default="hi_res", help="parsing strategy to be used, hi-res by default")
+@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
+@click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
+def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
     print(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_papers(parse_folder, mode, destination_folder)
+    return parse_papers(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
 
 
 if __name__ == '__main__':
