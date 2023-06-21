@@ -14,8 +14,8 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma
 from pycomfort.files import *
 
-from getpaper.parse import papers_to_documents
-from getpaper.splitter import RecursiveSplitterWithSource
+from parse import papers_to_documents
+from splitter import RecursiveSplitterWithSource
 
 
 def load_environment_keys(debug: bool = True):
@@ -108,3 +108,6 @@ def index_papers_command(papers: str, folder: str, collection: str, chunk_size: 
     index = Path(folder)
     papers_folder = Path(papers)
     return index_papers(papers_folder, index, collection, chunk_size, embeddings)
+
+if __name__ == '__main__':
+    app()

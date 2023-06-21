@@ -36,6 +36,10 @@ getpaper/parse.py parse_paper --paper /home/antonkulaga/sources/getpaper/test/22
 
 We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
+For example if you have your papers inside data/output/test/papers folder and you want to make a ChromaDB index at data/output/test/index you can do it by:
+```bash
+python getpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
+```
 
 # Examples
 

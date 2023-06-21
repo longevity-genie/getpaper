@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import Optional, List
 
 import click
-import requests
 from click import Context
 from langchain.document_loaders import UnstructuredPDFLoader
 from langchain.schema import Document
 from pycomfort.files import traverse
+
 
 def parse_paper(paper: Path, folder: Optional[Path] = None,
                 mode: str = "single", strategy: str = "auto",
