@@ -5,6 +5,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pycomfort.files import *
 from copy import deepcopy
 
+
 class RecursiveSplitterWithSource(RecursiveCharacterTextSplitter):
     """
     Splitter that also modifies metadata

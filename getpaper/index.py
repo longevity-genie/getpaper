@@ -15,7 +15,7 @@ from langchain.vectorstores import Chroma
 from pycomfort.files import *
 
 from getpaper.parse import papers_to_documents
-from splitter import RecursiveSplitterWithSource
+from getpaper.splitter import RecursiveSplitterWithSource
 
 
 def load_environment_keys(debug: bool = True):
