@@ -13,6 +13,7 @@ from langchain.schema import Document
 from langchain.vectorstores import Chroma
 from pycomfort.files import traverse
 from pynction import Try
+from getpaper.download import try_download_async, download_papers
 
 
 @click.group(invoke_without_command=False)
@@ -21,6 +22,23 @@ def app(ctx: Context):
     if ctx.invoked_subcommand is None:
         click.echo('Running the default command...')
     pass
+
+
+@app.command("download_papers_async")
+@click.argument('dois', nargs=-1)
+@click.option('--threads', '-t', type=int, default=5, help='Number of threads (default: 5)')
+def download_papers_async_command(dois: List[str], threads: int):
+    """Downloads papers with the given DOIs to the specified destination."""
+    if not dois:
+        dois = ["10.3390/ijms22031073","wrong_doi", "10.1038/s41597-020-00710-z"]
+    # Call the actual function with the provided arguments
+    where = Path("./data/output/test/papers").absolute().resolve()
+    results = download_papers(dois, where, threads)
+    for k,v in results[0].items():
+        print(f"successfully downloaded {k} in an async way to {v}")
+    for w in results[1]:
+        print(f"failed download for {w}")
+    return results
 
 def doi_download_parse(doi: str = "10.3390/ijms22031073", strategy: str = "auto"):
     print("example_download_and_parse_doi")

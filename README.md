@@ -11,7 +11,10 @@ pip install getpaper
 # Usage
 ## Downloading papers
 
-After the installation you can either import the library into your python code or you can use the console scripts, for example:
+After the installation you can either import the library into your python code or you can use the console scripts.
+
+If you install from pip calling download will mean calling getpaper/download.py , for parse - getpaper/parse.py , for index - getpaper/index.py
+
 ```bash
 download download download_pubmed --pubmed 22266545 --folder papers --name pmid
 ```
@@ -20,6 +23,31 @@ Downloads the paper with pubmed id into the folder 'papers' and uses the pubmed 
 download download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder papers
 ```
 Downloads the paper with DOI into the folder papers, as --name is not specified doi is used as name
+
+It is also possible to download many papers in parallel with download_papers(dois: List[str], destination: Path, threads: int) function, for example:
+```python
+from pathlib import Path
+from typing import List
+from getpaper.download import download_papers
+dois: List[str] = ["10.3390/ijms22031073", "10.1038/s41597-020-00710-z", "wrong"]
+destination: Path = Path("./data/output/test/papers").absolute().resolve()
+threads: int = 5
+results = download_papers(dois, destination, threads)
+successful = results[0]
+failed = results[1]
+```
+Here results will be OrderedDict[str, Path] with successfully downloaded doi->paper_path and List[str] with failed dois, in current example:
+```
+(OrderedDict([('10.3390/ijms22031073',
+               PosixPath('/home/antonkulaga/sources/getpaper/notebooks/data/output/test/papers/10.3390/ijms22031073.pdf')),
+              ('10.1038/s41597-020-00710-z',
+               PosixPath('/home/antonkulaga/sources/getpaper/notebooks/data/output/test/papers/10.1038/s41597-020-00710-z.pdf'))]),
+ ['wrong'])
+```
+Same function can be called from the command line:
+```bash
+download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-020-00710-z" --dois "wrong" --folder ""/home/antonkulaga/sources/getpaper/notebooks/data/output/test/papers" --threads 5
+```
 
 ## Parsing the papers
 

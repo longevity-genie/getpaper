@@ -11,6 +11,7 @@ dependencies:
   - python-dotenv
   - pytorch
   - tesseract
+  - jupyterlab #for examples only
   - pip:
       - pyfunctional
       - openai
