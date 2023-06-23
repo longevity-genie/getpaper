@@ -45,6 +45,19 @@ def db_with_documents(db: Chroma, documents: list[Document],
                       splitter: TextSplitter,
                       debug: bool = False,
                       id_field: Optional[str] = None):
+    """
+    Function to add documents to a Chroma database.
+
+    Args:
+        db (Chroma): The database to add the documents to.
+        documents (list[Document]): The list of documents to add.
+        splitter (TextSplitter): The TextSplitter to use for splitting the documents.
+        debug (bool): If True, print debug information. Default is False.
+        id_field (Optional[str]): If provided, use this field from the document metadata as the ID. Default is None.
+
+    Returns:
+        Chroma: The updated database.
+    """
     docs = splitter.split_documents(documents)
     texts = [doc.page_content for doc in docs]
     metadatas = [doc.metadata for doc in docs]
@@ -64,15 +77,43 @@ def write_db(persist_directory: Path,
              debug: bool = False,
              id_field: Optional[str] = None,
              embeddings: Optional[Embeddings] = None):
+    """
+    Writes the provided documents to a database.
+
+    Args:
+        persist_directory (Path): The directory where the database should be saved.
+        collection_name (str): The name of the collection in the database.
+        documents (list[Document]): The list of documents to be added to the database.
+        chunk_size (int): The size of the text chunks to split the documents into. Default is 6000.
+        debug (bool): If True, print debug information. Default is False.
+        id_field (Optional[str]): The name of the field to use as the document ID. Default is None.
+        embeddings (Optional[Embeddings]): The embeddings to use. If not provided, defaults to OpenAIEmbeddings.
+
+    Returns:
+        Path: The directory where the database was saved.
+    """
+
+    # Create the directory where the database will be saved, if it doesn't already exist
     where = persist_directory / collection_name
     where.mkdir(exist_ok=True, parents=True)
+
+    # If no embeddings were provided, default to OpenAIEmbeddings
     if embeddings is None:
         embeddings = OpenAIEmbeddings()
+
+    # Create a Chroma database with the specified collection name and embeddings, and save it in the specified directory
     db = Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
+
+    # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
     splitter = RecursiveSplitterWithSource(chunk_size=chunk_size)
-    splitter._chunk_size = chunk_size
+
+    # Add the documents to the database
     db_updated = db_with_documents(db, documents, splitter, debug, id_field)
+
+    # Persist the changes to the database
     db_updated.persist()
+
+    # Return the directory where the database was saved
     return where
 
 

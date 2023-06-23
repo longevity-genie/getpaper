@@ -8,6 +8,12 @@ Install the library with:
 pip install getpaper
 ```
 
+On linux systems you sometimes need to check that build essentials are installed:
+```bash
+sudo apt install build-essential.
+```
+It is also recommended to use micromamba, conda, anaconda or other environments to avoid bloating system python with too many dependencies.
+
 # Usage
 ## Downloading papers
 
@@ -51,7 +57,7 @@ download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-02
 
 ## Parsing the papers
 
-You can parse the downloaded papers with the unstructure library. For example if the papers are in the folder test, you can run:
+You can parse the downloaded papers with the unstructured library. For example if the papers are in the folder test, you can run:
 ```bash
 getpaper/parse.py parse_folder --folder data/output/test/papers --threads 5
 ```
@@ -72,7 +78,7 @@ getpaper/parse.py count_tokens --path /home/antonkulaga/sources/non-animal-model
 
 We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
-For example if you have your papers inside data/output/test/papers folder and you want to make a ChromaDB index at data/output/test/index you can do it by:
+For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
 ```bash
 python getpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
 ```
@@ -84,6 +90,6 @@ You can run examples.py to see usage examples
 # Additional requirements
 
 Detectron2 is required for using models from the layoutparser model zoo but is not automatically installed with this package. 
-For MacOS and Linux, build from source with:
+For macOS and Linux, build from source with:
 
 pip install 'git+https://github.com/facebookresearch/detectron2.git@e2ce8dc#egg=detectron2'

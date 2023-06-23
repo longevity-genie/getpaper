@@ -82,29 +82,40 @@ def download_pubmed(pubmed: str, destination: Path, skip_if_exist: bool = True, 
 
 async def try_download_async(executor: Executor, doi: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None) -> (str, Path):
     """
-    downloads the paper by doi
-    :param executor: ThreadPoolExecutor to run blocking IO in
-    :param doi:
-    :param destination: where to put the results
-    :param skip_if_exist:
-    :param name:
-    :return: Try monad with the result
+    Asynchronously download a paper using its DOI.
+
+    Args:
+        executor (Executor): The ThreadPoolExecutor to run blocking IO in.
+        doi (str): The DOI of the paper to download.
+        destination (Path): The directory where the downloaded paper should be stored.
+        skip_if_exist (bool): If True, skip the download if the paper already exists in the destination. Default is True.
+        name (Optional[str]): The name of the file to save the paper as. If not provided, use the DOI. Default is None.
+
+    Returns:
+        (str, Path): A tuple containing the DOI of the paper and the path to the downloaded paper.
     """
+
+    # Construct the URL for the paper using the DOI
     doi_url = f"https://doi.org/{doi}"
     paper = (destination / f"{doi}.pdf").absolute().resolve() if name is None else (destination / f"{name.replace(',pdf', '')}.pdf").absolute().resolve()
 
+    # If the paper already exists and we are skipping existing papers, return the DOI and path
     if skip_if_exist and paper.exists():
         print(f"Paper {paper} for {doi} already exists!")
         return doi, paper
 
+    # Get a reference to the current event loop
     loop = asyncio.get_event_loop()
 
     def blocking_io():
+        # Download the paper
+        # This is a blocking IO operation, so it's run in the executor
         scihub_download(doi_url, paper_type="doi", out=str(paper))
         return paper  # Explicitly return the path of the downloaded file
 
     _ = await loop.run_in_executor(executor, blocking_io)
 
+    # Return the DOI and path to the downloaded paper
     return doi, Path
 
 
@@ -122,8 +133,8 @@ def download_papers(dois: List[str], destination: Path, threads: int) -> (Ordere
 
         # Get the current event loop, run the downloads, and wait for all of them to finish
         loop = asyncio.get_event_loop()
-        downloaded: List[str, Path] = loop.run_until_complete(asyncio.gather(*coroutines))
-    partitions: List[List[str, Path]] = seq(downloaded).partition(lambda kv: isinstance(kv[1], Path)).to_list()
+        downloaded: List[(str, Path)] = loop.run_until_complete(asyncio.gather(*coroutines))
+    partitions: List[List[(str, Path)]] = seq(downloaded).partition(lambda kv: isinstance(kv[1], Path)).to_list()
     return OrderedDict(partitions[0]), [kv[0] for kv in partitions[1]]
 
 

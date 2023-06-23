@@ -10,6 +10,11 @@ from functional import seq
 from langchain.document_loaders import UnstructuredPDFLoader
 from langchain.schema import Document
 from pycomfort.files import traverse
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from deprecated import deprecated
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 def num_tokens_openai(string: str, model: str, price_per_1k: float = 0.0001) -> (int, float):
     """Returns the number of tokens for a model"""
@@ -34,49 +39,79 @@ openai_prices_per_thousand = {
 def parse_paper(paper: Path, folder: Optional[Path] = None,
                 mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
-                include_page_breaks: bool = False
+                include_page_breaks: bool = False, recreate_parent: bool = False
                 ):
     """
     Parses the paper using Unstructured paper parser
     :param paper:
     :param folder:
     :param mode: can be single or paged
+    :param recreate_parent: can be useful if we grouped papers by subfolders (for example for dois)
     :return:
     """
     bin_file = open(str(paper), "rb")
     loader = UnstructuredPDFLoader(file_path=None, file = bin_file,  mode=mode,
                                    pdf_infer_table_structure=pdf_infer_table_structure,
-                                   strategy = strategy,
-                                    include_page_breaks = include_page_breaks)
-    where = paper.parent if folder is None else folder
+                                   strategy = strategy, include_page_breaks = include_page_breaks)
+    where = paper.parent if folder is None else folder / paper.parent.name if recreate_parent else folder
+    where.mkdir(parents=True, exist_ok=True)
+    print(f"WHERE IS {where} and recreate_parent is {recreate_parent}")
     docs: list[Document] = loader.load()
     if len(docs) ==1:
-        f = where / f"{paper.stem}.txt"
+        name = f"{paper.stem}.txt"
+        f = where / name
         print(f"writing {f}")
         f.write_text(docs[0].page_content)
         return [f]
     else:
         acc = []
         for i, doc in enumerate(docs):
-            f = (where / f"{paper.stem}_{i}.txt")
+            name = f"{paper.stem}_{i}.txt"
+            f = (where / name)
             print(f"writing {f}")
             f.write_text(doc.page_content)
             acc.append(f)
         return acc
 
+
 def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
                  mode: str = "single", strategy: str = "auto",
                  pdf_infer_table_structure: bool = True,
-                 include_page_breaks: bool = False):
+                 include_page_breaks: bool = False, recreate_parent: bool = False, cores: Optional[int] = None):
+    """
+    Function to parse multiple papers using multiple cores.
+    The function employs multiprocessing to speed up the process.
+
+    Args:
+        parse_folder (Path): The folder where the papers (PDF files) are located.
+        destination (Optional[Path]): The destination folder where parsed papers will be saved.
+                                      If not provided, the parsed papers are saved in their original folder.
+        mode (str): The mode to parse the papers. Default is "single".
+        strategy (str): The strategy to parse the papers. Default is "auto".
+        pdf_infer_table_structure (bool): If True, attempts to infer table structure in PDFs. Default is True.
+        include_page_breaks (bool): If True, includes page breaks in the parsed output. Default is False.
+        recreate_parent (bool): If True, recreates the parent directory structure in the destination folder. Default is False.
+        cores (Optional[int]): The number of cores to use. If not provided, uses all available cores.
+
+    Returns:
+        list[Path]: A list of paths to the parsed papers.
+    """
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
     print(f"indexing {len(papers)} papers")
     acc = []
-    for i, paper in enumerate(papers):
-        where = destination if destination is not None else paper.parent
-        print(f"adding paper {paper} which is {i} out of {len(papers)}. It will be saved to {where}")
-        acc = acc + parse_paper(paper, where, mode, strategy, pdf_infer_table_structure, include_page_breaks)
+
+    cores = cpu_count() if cores is None else min(cpu_count(), cores)
+    with Pool(cores) as p:
+        parse_func = partial(parse_paper, folder=destination, mode=mode, strategy=strategy,
+                             pdf_infer_table_structure=pdf_infer_table_structure,
+                             include_page_breaks=include_page_breaks, recreate_parent = recreate_parent)
+        results = p.map(parse_func, papers)
+        for result in results:
+            acc = acc + result
+
     print("papers parsing finished!")
     return acc
+
 
 def papers_to_documents(folder: Path, suffix: str = ""):
     txt = traverse(folder, lambda p: "txt" in p.suffix)
@@ -96,9 +131,8 @@ def papers_to_documents(folder: Path, suffix: str = ""):
                 docs.append(doc)
     return docs
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
+@deprecated(version='0.1.6', reason="parse_papers function was rewritten with multiprocessors support")
 def parse_papers_async(parse_folder: Path, destination: Optional[Path] = None,
                  mode: str = "single", strategy: str = "auto",
                  pdf_infer_table_structure: bool = True,
@@ -165,11 +199,12 @@ def count_tokens(path: Path, model: str, suffix: str, price: float):
 @click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
-def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):
+@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
+def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, recreate_parent: bool):
     paper_file = Path(paper)
     destination_folder = Path(destination)
     print(f"parsing paper {paper} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_paper(paper_file, None, mode, strategy, infer_tables, include_page_breaks)
+    return parse_paper(paper_file, None, mode, strategy, infer_tables, include_page_breaks, recreate_parent)
 
 @app.command("parse_folder")
 @click.option('--folder', type=click.Path(exists=True), help="folder to parse papers in")
@@ -178,15 +213,13 @@ def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, 
 @click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
-@click.option('--threads', '-t', type=int, default=1, help='Number of threads (default: 5)')
-def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, threads: int):
+@click.option('--cores', '-t', type=int, default=None, help='Number of cores to use')
+@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
+def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, cores: Optional[int], recreate_parent: bool):
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
     print(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    if threads <2:
-        return parse_papers(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
-    else:
-        return parse_papers_async(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
+    return parse_papers(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks, recreate_parent, cores = cores)
 
 
 if __name__ == '__main__':

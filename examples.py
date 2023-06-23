@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 
 import chromadb
 import click
-import requests
 from click import Context
-from langchain.document_loaders import UnstructuredPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.schema import Document
 from langchain.vectorstores import Chroma
-from pycomfort.files import traverse
 from pynction import Try
-from getpaper.download import try_download_async, download_papers
+
+from getpaper.download import download_papers
+from getpaper.parse import parse_papers
 
 
 @click.group(invoke_without_command=False)
@@ -48,12 +46,20 @@ def doi_download_parse(doi: str = "10.3390/ijms22031073", strategy: str = "auto"
     try_download: Try[Path] = try_download(doi, where)
     return try_download.run(lambda p: parse_paper(p.absolute().resolve(), strategy=strategy), lambda f: "it crashed :((((((")
 
+
 @app.command("doi_download_parse")
 @click.option('--doi', type=click.STRING, default = "10.3390/ijms22031073", help="download doi")
 @click.option("--strategy", type=click.Choice(["auto", "hi_res", "fast"]), default = "auto", help="strategy used to convert the page")
 def doi_download_parse_command(doi: str = "10.3390/ijms22031073", strategy: str = "auto"):
    return doi_download_parse(doi, strategy)
 
+@app.command("parse_papers")
+def parse_papers_command():
+    test_folder = Path("./data/output/test").absolute().resolve()
+    papers_folder = test_folder / "papers"
+    destination_folder = test_folder / "parsed_papers"
+    destination_folder.mkdir(exist_ok=True, parents=True)
+    return parse_papers(papers_folder, destination_folder, recreate_parent=True)
 
 @app.command("doi_download_parse_index")
 @click.option('--doi', type=click.STRING, default = "10.3390/ijms22031073", help="download doi")
@@ -72,7 +78,6 @@ def doi_download_parse_index(doi: str, strategy: str = "auto"):
     print(f"printing part of the collection content of length {example_collection.count()}")
     top_5 = example_collection.get(limit=5, include=["embeddings", "metadatas", "documents"])
     print(f"TOP-5 IS {top_5}")
-
 
 
 if __name__ == '__main__':
