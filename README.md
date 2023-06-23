@@ -60,6 +60,14 @@ You can also parse papers on a per-file basis, for example:
 getpaper/parse.py parse_paper --paper data/output/test/papers/10.3390/ijms22031073.pdf
 ```
 
+## Count tokens
+
+To evaluate how much you want to split texts and how much embeddings will cost you it is useful to compute token number:
+
+```bash
+getpaper/parse.py count_tokens --path /home/antonkulaga/sources/non-animal-models/data/inputs/datasets
+```
+
 ## Indexing papers
 
 We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.

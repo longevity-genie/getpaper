@@ -1,13 +1,34 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import click
+import tiktoken
 from click import Context
+from functional import seq
 from langchain.document_loaders import UnstructuredPDFLoader
 from langchain.schema import Document
 from pycomfort.files import traverse
+
+def num_tokens_openai(string: str, model: str, price_per_1k: float = 0.0001) -> (int, float):
+    """Returns the number of tokens for a model"""
+    encoding = tiktoken.encoding_for_model(model)
+    n_tokens = len(encoding.encode(string))
+    return n_tokens, n_tokens / 1000.0 * price_per_1k
+
+"""
+    Model	Input	Output
+8K context	$0.03 / 1K tokens	$0.06 / 1K tokens
+32K context	$0.06 / 1K tokens	$0.12 / 1K tokens
+"""
+
+openai_prices_per_thousand = {
+    "gpt-4-32k": None, #32,768 tokens
+    "gpt-4": 0.03, #8,192 tokens
+    "gpt-3.5-turbo-16k": None, #16,384 tokens,
+    "gpt-3.5-turbo": None #4,096 tokens
+}
 
 
 def parse_paper(paper: Path, folder: Optional[Path] = None,
@@ -110,6 +131,32 @@ def app(ctx: Context):
     #    click.echo('Running the default command...')
     #    test_index()
     pass
+
+@app.command("count_tokens")
+@click.option('--path', type=click.Path(exists=True), help="folder to parse papers in")
+@click.option('--model', default='gpt-3.5-turbo-16k', help='model to use, gpt-3.5-turbo-16k by default')
+@click.option("--suffix", default=".txt", help="suffix in the files to evaluate, .txt by default")
+@click.option("--price", type=click.FLOAT, default=0.0001, help = "price for 1K tokens")
+def count_tokens(path: Path, model: str, suffix: str, price: float):
+    where = Path(path)
+    if where.is_dir():
+        papers: list[Path] = traverse(where, lambda p: suffix in p.name)
+        tokens_price = seq(papers).map(lambda p: num_tokens_openai(p.read_text(encoding="utf-8"), model, price))
+        num = tokens_price.map(lambda r: r[0])
+        money = tokens_price.map(lambda r: r[1])
+        num_sum = num.sum()
+        money_sum = money.sum()
+        num_avg = num.average()
+        money_avg = money.average()
+        num_max = num.max()
+        money_max = money.max()
+        print(f"Checked {len(papers)} papers. TOTAL TOKENS = {num_sum} , COST = {money_sum}")
+        print(f"PER PAPER: \n average tokens {num_avg} , cost {money_avg}\n max tokens = {num_max} , max cost = {money_max}")
+        return num, money
+    else:
+        content = path.read_text(encoding="utf-8")
+        print("checked")
+        return num_tokens_openai(content, model)
 
 @app.command("parse_paper")
 @click.option('--paper', type=click.Path(exists=True), help="paper pdf to parse")
