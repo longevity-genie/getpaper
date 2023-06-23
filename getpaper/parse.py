@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import click
+import pynction.monads.try_monad
 import tiktoken
 from click import Context
 from functional import seq
@@ -15,6 +16,9 @@ from functools import partial
 from deprecated import deprecated
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+
+from pynction import Try
+
 
 def num_tokens_openai(string: str, model: str, price_per_1k: float = 0.0001) -> (int, float):
     """Returns the number of tokens for a model"""
@@ -40,7 +44,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
                 mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
                 include_page_breaks: bool = False, recreate_parent: bool = False
-                ):
+                ) -> List[Path]:
     """
     Parses the paper using Unstructured paper parser
     :param paper:
@@ -55,7 +59,6 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
                                    strategy = strategy, include_page_breaks = include_page_breaks)
     where = paper.parent if folder is None else folder / paper.parent.name if recreate_parent else folder
     where.mkdir(parents=True, exist_ok=True)
-    print(f"WHERE IS {where} and recreate_parent is {recreate_parent}")
     docs: list[Document] = loader.load()
     if len(docs) ==1:
         name = f"{paper.stem}.txt"
@@ -72,6 +75,12 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
             f.write_text(doc.page_content)
             acc.append(f)
         return acc
+
+def try_parse_paper(paper: Path, folder: Optional[Path] = None,
+                    mode: str = "single", strategy: str = "auto",
+                    pdf_infer_table_structure: bool = True,
+                    include_page_breaks: bool = False, recreate_parent: bool = False) -> Try[List[Path]]:
+    return Try.of(lambda: parse_paper(paper, folder, mode, strategy, pdf_infer_table_structure, include_page_breaks, recreate_parent))
 
 
 def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
@@ -99,17 +108,23 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
     print(f"indexing {len(papers)} papers")
     acc = []
+    errors = []
 
     cores = cpu_count() if cores is None else min(cpu_count(), cores)
     with Pool(cores) as p:
-        parse_func = partial(parse_paper, folder=destination, mode=mode, strategy=strategy,
+        parse_func = partial(try_parse_paper, folder=destination, mode=mode, strategy=strategy,
                              pdf_infer_table_structure=pdf_infer_table_structure,
                              include_page_breaks=include_page_breaks, recreate_parent = recreate_parent)
         results = p.map(parse_func, papers)
         for result in results:
-            acc = acc + result
+            if isinstance(result, pynction.monads.try_monad.Success):
+                acc = acc + result._value
+            else:
+                errors = errors + result
 
     print("papers parsing finished!")
+    if len(errors) >0:
+        print(f"errors discovered: {errors}")
     return acc
 
 
@@ -215,7 +230,7 @@ def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, 
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
 @click.option('--cores', '-t', type=int, default=None, help='Number of cores to use')
 @click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
-def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, cores: Optional[int], recreate_parent: bool):
+def parse_paper_command(folder: str, destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, cores: Optional[int], recreate_parent: bool):
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
     print(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
