@@ -46,18 +46,18 @@ Here results will be OrderedDict[str, Path] with successfully downloaded doi->pa
 ```
 Same function can be called from the command line:
 ```bash
-download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-020-00710-z" --dois "wrong" --folder ""/home/antonkulaga/sources/getpaper/notebooks/data/output/test/papers" --threads 5
+download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-020-00710-z" --dois "wrong" --folder "data/output/test/papers" --threads 5
 ```
 
 ## Parsing the papers
 
 You can parse the downloaded papers with the unstructure library. For example if the papers are in the folder test, you can run:
 ```bash
-getpaper/parse.py parse_folder --folder /home/antonkulaga/sources/getpaper/test
+getpaper/parse.py parse_folder --folder data/output/test/papers --threads 5
 ```
-You can also parse papers on a per file basis, for example:
+You can also parse papers on a per-file basis, for example:
 ```bash
-getpaper/parse.py parse_paper --paper /home/antonkulaga/sources/getpaper/test/22266545.pdf
+getpaper/parse.py parse_paper --paper data/output/test/papers/10.3390/ijms22031073.pdf
 ```
 
 ## Indexing papers

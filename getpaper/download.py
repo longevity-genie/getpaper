@@ -159,7 +159,7 @@ def download_pubmed_command(pubmed: str, folder: str, skip_existing: bool, name:
     return download_pubmed(pubmed, where, skip_existing, custom_name)
 
 @app.command("download_papers")
-@click.argument('dois', nargs=-1)
+@click.option('--dois', multiple=True)
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--threads', '-t', type=int, default=5, help='Number of threads (default: 5)')
 def download_papers_command(dois: List[str], folder: str, threads: int):

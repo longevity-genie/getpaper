@@ -75,6 +75,34 @@ def papers_to_documents(folder: Path, suffix: str = ""):
                 docs.append(doc)
     return docs
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+def parse_papers_async(parse_folder: Path, destination: Optional[Path] = None,
+                 mode: str = "single", strategy: str = "auto",
+                 pdf_infer_table_structure: bool = True,
+                 include_page_breaks: bool = False,
+                 threads: int = 5):
+    papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
+    print(f"indexing {len(papers)} papers")
+
+    async def async_parse_paper(paper):
+        loop = asyncio.get_running_loop()
+        where = destination if destination is not None else paper.parent
+        return await loop.run_in_executor(
+            executor, parse_paper, paper, where, mode, strategy, pdf_infer_table_structure, include_page_breaks
+        )
+
+    executor = ThreadPoolExecutor(max_workers=threads)
+
+    loop = asyncio.get_event_loop()
+    tasks = [async_parse_paper(paper) for paper in papers]
+    parsed_papers = loop.run_until_complete(asyncio.gather(*tasks))
+
+    print("papers parsing finished!")
+    return parsed_papers
+
+
 @click.group(invoke_without_command=False)
 @click.pass_context
 def app(ctx: Context):
@@ -103,11 +131,15 @@ def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, 
 @click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
-def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool):
+@click.option('--threads', '-t', type=int, default=1, help='Number of threads (default: 5)')
+def parse_paper_command(folder: str,destination: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, threads: int):
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
     print(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_papers(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
+    if threads <2:
+        return parse_papers(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
+    else:
+        return parse_papers_async(parse_folder, destination_folder, mode, strategy, infer_tables, include_page_breaks)
 
 
 if __name__ == '__main__':
