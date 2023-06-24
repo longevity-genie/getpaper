@@ -103,11 +103,11 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
         cores (Optional[int]): The number of cores to use. If not provided, uses all available cores.
 
     Returns:
-        list[Path]: A list of paths to the parsed papers.
+        list[Path], list[Failure]: A list of paths to the parsed papers and a list of Failtures
     """
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
     print(f"indexing {len(papers)} papers")
-    acc = []
+    parsed = []
     errors = []
 
     cores = cpu_count() if cores is None else min(cpu_count(), cores)
@@ -118,14 +118,16 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
         results = p.map(parse_func, papers)
         for result in results:
             if isinstance(result, pynction.monads.try_monad.Success):
-                acc = acc + result._value
+                parsed = parsed + result._value
+            elif isinstance(result, pynction.monads.try_monad.Failure):
+                errors.append(result._e)
             else:
-                errors = errors + result
+                print(f"unpredicted type of the {result}")
 
     print("papers parsing finished!")
     if len(errors) >0:
         print(f"errors discovered: {errors}")
-    return acc
+    return results, errors
 
 
 def papers_to_documents(folder: Path, suffix: str = ""):
