@@ -10,7 +10,9 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from pynction import Try
 
+from getpaper.clean import proofread, clean_paper
 from getpaper.download import download_papers
+from getpaper.config import load_environment_keys
 from getpaper.parse import parse_papers
 
 
@@ -61,8 +63,22 @@ def parse_papers_command():
     destination_folder.mkdir(exist_ok=True, parents=True)
     return parse_papers(papers_folder, destination_folder, recreate_parent=True)
 
+@app.command("clean")
+def clean():
+    papers_folder = Path("./data/output/test/parsed_papers").absolute().resolve()
+    paper = papers_folder / "10.1038"  / "s41597-020-00710-z.txt"
+    text = paper.read_text(encoding="utf-8")
+    #openai_key = load_environment_keys()
+    print("proofreading")
+    results = proofread(text)
+    print("RESULTS ARE:\n")
+    #paper_improved = papers_folder / "10.1038"  / "s41597-020-00710-z_TEST.txt"
+    #print(f"RESULTS WILL BE WRITTEN TO {paper_improved}")
+    return clean_paper(paper)
+
+
 @app.command("doi_download_parse_index")
-@click.option('--doi', type=click.STRING, default = "10.3390/ijms22031073", help="download doi")
+@click.option('--doi', type=click.STRING, default="10.3390/ijms22031073", help="download doi")
 @click.option("--strategy", type=click.Choice(["auto", "hi_res", "fast"]), default = "auto", help="strategy used to convert the page")
 def doi_download_parse_index(doi: str, strategy: str = "auto"):
     test_folder = Path("./data/output/test").absolute().resolve()

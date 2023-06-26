@@ -61,7 +61,7 @@ def try_download(doi: str, destination: Path, skip_if_exist: bool = True, name: 
     :return: Try monad with the result
     """
     doi_url = f"https://doi.org/{doi}"
-    paper = (destination / f"{doi}.pdf").absolute().resolve() if name is None else (destination / f"{name.replace(',pdf', '')}.pdf").absolute().resolve()
+    paper = (destination / f"{doi}.pdf").absolute().resolve() if name is None else (destination / f"{name.replace('.pdf', '')}.pdf").absolute().resolve()
     if skip_if_exist and paper.exists():
         print(f"Paper {paper} for {doi} already exists!")
         return Try.of(lambda: paper)

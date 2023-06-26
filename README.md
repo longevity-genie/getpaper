@@ -59,7 +59,7 @@ download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-02
 
 You can parse the downloaded papers with the unstructured library. For example if the papers are in the folder test, you can run:
 ```bash
-getpaper/parse.py parse_folder --folder data/output/test/papers --threads 5
+getpaper/parse.py parse_folder --folder data/output/test/papers --cores 5
 ```
 You can also parse papers on a per-file basis, for example:
 ```bash
@@ -80,7 +80,7 @@ We also provide features to index the papers with openai or lambda embeddings an
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
 For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
 ```bash
-python getpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
+getpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
 ```
 
 # Examples

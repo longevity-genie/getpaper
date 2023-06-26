@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-import dotenv
-from dotenv import load_dotenv
-import os
+
 import click
 from click import Context
-from langchain.document_loaders import DataFrameLoader
 from langchain.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIEmbeddings
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
@@ -14,19 +11,8 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma
 from pycomfort.files import *
 
-from getpaper.parse import papers_to_documents
-from getpaper.splitter import RecursiveSplitterWithSource
-
-
-def load_environment_keys(debug: bool = True):
-    e = dotenv.find_dotenv()
-    if debug:
-        print(f"environment found at {e}")
-    has_env: bool = load_dotenv(e, verbose=True, override=True)
-    if not has_env:
-        print("Did not found environment file, using system OpenAI key (if exists)")
-    openai_key = os.getenv('OPENAI_API_KEY')
-    return openai_key
+#from getpaper.config import load_environment_keys
+from getpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents
 
 
 def resolve_embeddings(embeddings_name: str) -> Embeddings:
@@ -73,7 +59,7 @@ def db_with_documents(db: Chroma, documents: list[Document],
 def write_db(persist_directory: Path,
              collection_name: str,
              documents: list[Document],
-             chunk_size: int = 6000,
+             splitter: TextSplitter,
              debug: bool = False,
              id_field: Optional[str] = None,
              embeddings: Optional[Embeddings] = None):
@@ -84,6 +70,7 @@ def write_db(persist_directory: Path,
         persist_directory (Path): The directory where the database should be saved.
         collection_name (str): The name of the collection in the database.
         documents (list[Document]): The list of documents to be added to the database.
+        splitter: TextSplitter
         chunk_size (int): The size of the text chunks to split the documents into. Default is 6000.
         debug (bool): If True, print debug information. Default is False.
         id_field (Optional[str]): The name of the field to use as the document ID. Default is None.
@@ -104,9 +91,6 @@ def write_db(persist_directory: Path,
     # Create a Chroma database with the specified collection name and embeddings, and save it in the specified directory
     db = Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
 
-    # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
-    splitter = RecursiveSplitterWithSource(chunk_size=chunk_size)
-
     # Add the documents to the database
     db_updated = db_with_documents(db, documents, splitter, debug, id_field)
 
@@ -126,29 +110,40 @@ def app(ctx: Context):
     pass
 
 
-def index_papers(papers_folder: Path, index: Path, collection: str, chunk_size: int, embeddings: str) -> Path:
+def index_papers(papers_folder: Path, index: Path, collection: str, splitter: SourceTextSplitter, embeddings: str) -> Path:
     index.mkdir(exist_ok=True)
     openai_key = load_environment_keys()
     embeddings_function = resolve_embeddings(embeddings)
     print(f"embeddings are {embeddings}")
-    where = index / f"{embeddings}_{chunk_size}_chunk"
+    where = index / f"{embeddings}_{splitter.chunk_size}_chunk"
     where.mkdir(exist_ok=True, parents=True)
     print(f"writing index of papers to {where}")
     documents = papers_to_documents(papers_folder)
-    return write_db(where, collection, documents, chunk_size, embeddings=embeddings_function)
+    return write_db(where, collection, documents, splitter, embeddings=embeddings_function)
 
 
 @app.command("index_papers")
 @click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
 @click.option('--folder', type=click.Path(), help="folder to put chroma indexes to")
 @click.option('--collection', default='papers', help='papers collection name')
-@click.option('--chunk_size', type=click.INT, default=6000, help='size of the chunk for splitting')
+@click.option('--splitter', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
+@click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
 @click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai",
               help='size of the chunk for splitting')
-def index_papers_command(papers: str, folder: str, collection: str, chunk_size: int, embeddings: str) -> Path:
+def index_papers_command(papers: str, folder: str, collection: str, splitter_name: str, chunk_size: int, embeddings: str) -> Path:
     index = Path(folder)
     papers_folder = Path(papers)
-    return index_papers(papers_folder, index, collection, chunk_size, embeddings)
+
+    if splitter_name == "recursive":
+        # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
+        splitter = SourceTextSplitter(chunk_size=chunk_size)
+    elif splitter_name == "recursive":
+        splitter = OpenAISplitter(tokens=chunk_size)
+    else:
+        print(f"{splitter_name} is not supported, using openai tiktoken based splitter instead")
+        splitter = OpenAISplitter(tokens=chunk_size)
+    return index_papers(papers_folder, index, collection, splitter, embeddings)
+
 
 if __name__ == '__main__':
     app()
