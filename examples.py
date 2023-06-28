@@ -12,7 +12,6 @@ from pynction import Try
 
 from getpaper.clean import proofread, clean_paper
 from getpaper.download import download_papers
-from getpaper.config import load_environment_keys
 from getpaper.parse import parse_papers
 
 
@@ -66,7 +65,7 @@ def parse_papers_command():
 @app.command("clean")
 def clean():
     papers_folder = Path("./data/output/test/parsed_papers").absolute().resolve()
-    paper = papers_folder / "10.1038"  / "s41597-020-00710-z.txt"
+    paper = papers_folder / "10.1038"  / "s41597-020-00710-z_unstructured.txt"
     text = paper.read_text(encoding="utf-8")
     #openai_key = load_environment_keys()
     print("proofreading")

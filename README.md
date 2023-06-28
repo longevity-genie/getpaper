@@ -54,12 +54,20 @@ Same function can be called from the command line:
 ```bash
 download download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-020-00710-z" --dois "wrong" --folder "data/output/test/papers" --threads 5
 ```
+You can also call download.py script directly:
+```bash
+python getpaper/download.py download_papers --dois "10.3390/ijms22031073" --dois "10.1038/s41597-020-00710-z" --dois "wrong" --folder "data/output/test/papers" --threads 5
+```
 
 ## Parsing the papers
 
 You can parse the downloaded papers with the unstructured library. For example if the papers are in the folder test, you can run:
 ```bash
 getpaper/parse.py parse_folder --folder data/output/test/papers --cores 5
+```
+You can also switch between different PDF parsers:
+```
+getpaper/parse.py parse_folder --folder data/output/test/papers --parser pdf_miner --cores 5
 ```
 You can also parse papers on a per-file basis, for example:
 ```bash

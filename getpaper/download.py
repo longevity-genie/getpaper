@@ -34,7 +34,8 @@ def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create
 def schihub_doi(doi: str, paper: Path, meta: Optional[Path] = None) -> (str, Optional[Path], Optional[Path]):
     doi_url = f"https://doi.org/{doi}"
     scihub_download(doi_url, paper_type="doi", out=str(paper))
-    logger.info(f"downloaded {doi_url} to {paper}")
+    if paper.exists():
+        logger.info(f"downloaded {doi_url} to {paper}")
     return doi, paper, meta
 
 #@logger.catch(reraise=False)
@@ -75,11 +76,9 @@ def download_semantic_scholar(paper_id: str, download: Optional[Path] = None, me
     sch = SemanticScholar()
     paper: Paper = sch.get_paper(paper_id)
     if metadata is not None:
-        print("WHY NOT WORKING")
         json_data = json.dumps(paper.raw_data)
         metadata.touch(exist_ok=True)
         metadata.write_text(json_data)
-        print("WRITING?")
         logger.info(f"metadata for {paper_id} successfully written to {metadata}")
     if download is not None:
         if paper.openAccessPdf is not None and "url" in paper.openAccessPdf:
