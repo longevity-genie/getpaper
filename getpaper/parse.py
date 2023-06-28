@@ -188,7 +188,7 @@ def parse_paper_command(paper: str, destination: str, mode: str, strategy: str, 
 @click.option('--destination', type=click.STRING, default=None, help="destination folder")
 @click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
 @click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="auto", help="parsing strategy to be used, auto by default")
-@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
+@click.option('--infer_tables', type=click.BOOL, default=True, helps="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
 @click.option('--cores', '-t', type=int, default=None, help='Number of cores to use')
 @click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")

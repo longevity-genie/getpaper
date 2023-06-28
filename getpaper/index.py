@@ -11,7 +11,7 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma
 from pycomfort.files import *
 
-#from getpaper.config import load_environment_keys
+from getpaper.config import load_environment_keys
 from getpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents
 
 
