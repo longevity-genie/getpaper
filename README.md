@@ -19,7 +19,7 @@ It is also recommended to use micromamba, conda, anaconda or other environments 
 
 After the installation you can either import the library into your python code or you can use the console scripts.
 
-If you install from pip calling download will mean calling getpaper/download.py , for parse - getpaper/parse.py , for index - getpaper/index.py
+If you install from pip calling _download_ will mean calling getpaper/download.py , for _parse_ - getpaper/parse.py , for _index_ - getpaper/index.py
 
 ```bash
 download download download_pubmed --pubmed 22266545 --folder papers --name pmid
