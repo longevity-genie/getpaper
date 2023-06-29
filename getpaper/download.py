@@ -241,15 +241,33 @@ def download_pubmed_command(pubmed: str, folder: str, skip_existing: bool, name:
     return download_pubmed(pubmed, where, skip_existing, custom_name)
 
 
+def get_access(
+        sch: SemanticScholar,
+        paper_ids: List[str],
+        fields: Optional[List[str]] = None
+) -> List[dict]:
+    if fields is None:
+        fields = ["externalIds", "isOpenAccess", "openAccessPdf", "title", "year"]
+
+    url = f'{sch.api_url}/paper/batch'
+
+    fields = ','.join(fields)
+    parameters = f'&fields={fields}'
+    payload = { "ids": paper_ids }
+
+    data = sch._requester.get_data(url, parameters, sch.auth_header, payload)
+    return [item for item in data if item is not None]
+
+
 def check_access(dois: List[str]) ->(List[Paper], List[Paper]):
     sch = SemanticScholar()
-    fetched = sch.get_papers(dois, ["openAccessPdf"])
-    logger.info(f"FETCHED {fetched}")
-    papers = seq(sch.get_papers(dois, ["openAccessPdf"]))
-    result = papers.partition(lambda p: "openAccessPdf" in p.raw_data and p.raw_data["openAccessPdf"] is not None and "url" in p.raw_data["openAccessPdf"]).to_list()
+    papers_list = get_access(sch, dois)
+    papers = seq(papers_list)
+    result = papers.partition(lambda p: "openAccessPdf" in p and p["openAccessPdf"] is not None and "url" in p["openAccessPdf"])
     opened = result[0].to_list()
     closed = result[1].to_list()
-    logger.info(f"{len(result[0].to_list())} papers out of {len(papers.to_list())}")
+    failed = len(dois) - len(papers_list)
+    logger.info(f"{len(result[0].to_list())} papers out of {len(dois)}{' out of which ' + str(failed) + ' were not found' if failed >0 else ''}")
     return opened, closed
 
 @app.command("access")
