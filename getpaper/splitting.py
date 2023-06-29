@@ -1,40 +1,83 @@
+import json
 from abc import ABC
-from typing import List
+from copy import deepcopy
+from typing import Dict, Union, List
 
 import tiktoken
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter, TextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from loguru import logger
 from pycomfort.files import *
-from copy import deepcopy
 
 
-def papers_to_documents(folder: Path, suffix: str = ""):
+def flatten_dict(d: Dict[str, Union[str, int, float, Dict, List]], parent_key: str = '', sep: str = '_', list_sep: Optional[str] = ", ") -> Dict[str, Union[str, int, float]]:
+    """
+    Flattens a nested dictionary, converting list values to comma-separated strings, and ignoring None values.
+
+    :param d: The dictionary to be flattened
+    :param parent_key: The key from the parent dictionary, if any
+    :param sep: The separator to be used between parent and child keys
+    :param list_sep: The separator to be used when joining list items into a string, if None - just drops the lists
+    :return: The flattened dictionary
+    """
+
+    items: Dict[str, Union[str, int, float]] = {}  # Initialize empty dictionary to hold result
+
+    for k, v in d.items():  # Iterate over items in input dictionary
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k  # Generate new key
+
+        if isinstance(v, dict):  # If value is a dictionary, flatten it recursively
+            items.update(flatten_dict(v, new_key, sep=sep, list_sep=list_sep))
+
+        elif isinstance(v, list):  # If value is a list, convert to string
+            if list_sep is not None:
+                list_str = "[ " + list_sep.join(map(str, v)) + " ]"
+                if list_str is not None:  # Ignore None values
+                    items[new_key] = list_str
+
+        elif v is not None:  # Ignore None values
+            items[new_key] = v  # If value is not a dictionary or a list, just add to result
+
+    return items  # Return the flattened dictionary
+
+
+def papers_to_documents(folder: Path, suffix: str = "", include_meta: bool = True):
     txt = traverse(folder, lambda p: "txt" in p.suffix)
     texts = [t for t in txt if suffix in t.name] if suffix != "" else txt
     docs: List[Document] = []
     for t in texts:
-        doc = paper_to_document(t)
+        meta: Path = t.parent / t.name.replace(".txt", "_meta.json")
+        if include_meta and meta.exists:
+            json_data = meta.read_text("utf-8")
+            meta_dic = json.loads(json_data)
+            doc = paper_to_document(t, meta_dic)
+        else:
+            doc = paper_to_document(t)
         if doc is not None:
             docs.append(doc)
     return docs
 
 
-def paper_to_document(paper: Path, min_tokens: int = 200) -> Optional[Document]:
+def paper_to_document(paper: Path, meta: Optional[dict] = None, min_tokens: int = 100) -> Optional[Document]:
     """
     Turns paper into document, assumes the folder/paper_name is DOI
     :param paper:
+    :param meta: additional metadata
     :param min_tokens:
-    :return:
+    :return: Documenty
     """
     doi = f"http://doi.org/{paper.parent.name}/{paper.stem}"
     text = paper.read_text(encoding="utf-8")
     if len(text) < min_tokens:
-        print("TOO SHORT TEXT")
+        logger.warning("TOO SHORT TEXT")
         return None
     else:
+        new_meta = {} if meta is None else flatten_dict(meta)
+        new_meta["source"] = doi
+        new_meta["doi"] = doi
         return Document(
             page_content=text,
-            metadata={"source": doi, "doi": doi}
+            metadata=new_meta
         )
 
 

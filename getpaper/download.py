@@ -19,11 +19,10 @@ from semanticscholar import SemanticScholar
 from semanticscholar.Paper import Paper
 import sys
 
+from getpaper.config import LOG_LEVELS, configure_logger, LogLevel
+
 DownloadedPaper = (str, Optional[Path], Optional[Path]) #type synonim for doi, Path, Path of the downloaded paper
 
-def __configure_logger(log_level: str):
-    if log_level.upper() != "NONE":
-        logger.add(sys.stdout, level=log_level.upper())
 
 def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create_parent: bool = True) -> Path:
     result = (folder / f"{doi}.pdf").absolute().resolve() if name is None else (folder / f"{name.replace('.pdf', '')}.pdf").absolute().resolve()
@@ -198,9 +197,9 @@ def app(ctx: Context):
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
-def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = "NONE"):
-    __configure_logger(log_level)
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG, help="logging level")
+def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = LogLevel.DEBUG.value):
+    configure_logger(log_level)
     logger.info(f"downloading {doi} to {folder}")
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
@@ -221,9 +220,9 @@ def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG, help="logging level")
 def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = "NONE") -> Try:
-    __configure_logger(log_level)
+    configure_logger(log_level)
     logger.debug(f"downloading {doi} to {folder}")
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
@@ -242,14 +241,32 @@ def download_pubmed_command(pubmed: str, folder: str, skip_existing: bool, name:
     return download_pubmed(pubmed, where, skip_existing, custom_name)
 
 
+def check_access(dois: List[str]) ->(List[Paper], List[Paper]):
+    sch = SemanticScholar()
+    fetched = sch.get_papers(dois, ["openAccessPdf"])
+    logger.info(f"FETCHED {fetched}")
+    papers = seq(sch.get_papers(dois, ["openAccessPdf"]))
+    result = papers.partition(lambda p: "openAccessPdf" in p.raw_data and p.raw_data["openAccessPdf"] is not None and "url" in p.raw_data["openAccessPdf"]).to_list()
+    opened = result[0].to_list()
+    closed = result[1].to_list()
+    logger.info(f"{len(result[0].to_list())} papers out of {len(papers.to_list())}")
+    return opened, closed
+
+@app.command("access")
+@click.option('--dois', multiple=True)
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default="debug", help="logging level")
+def check_access_command(dois: List[str],  log_level: str):
+    configure_logger(log_level)
+    return check_access(dois)
+
 @app.command("download_papers")
 @click.option('--dois', multiple=True)
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--threads', '-t', type=int, default=5, help='Number of threads (default: 5)')
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default="debug", help="logging level")
 def download_papers_command(dois: List[str], folder: str, threads: int, log_level: str):
     """Downloads papers with the given DOIs to the specified destination."""
-    __configure_logger(log_level)
+    configure_logger(log_level)
     if not dois:
         dois = []
     # Call the actual function with the provided arguments

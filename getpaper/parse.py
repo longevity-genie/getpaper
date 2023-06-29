@@ -17,10 +17,8 @@ from pynction import Try
 from loguru import logger
 import sys
 
-def _configure_logger(log_level: str):
-    # yes, it is duplicate but it is nice to avoid cross-module dependencies here
-    if log_level.upper() != "NONE":
-        logger.add(sys.stdout, level=log_level.upper())
+from getpaper.config import configure_logger, LOG_LEVELS, LogLevel
+
 
 class PDFParser(Enum):
     unstructured = "unstructured"
@@ -53,7 +51,8 @@ def clean_text(text: str) -> str:
     return clean(group_broken_paragraphs(replace_unicode_quotes(text)))
 
 
-def parse_paper(paper: Path, folder: Optional[Path] = None, parser: PDFParser = PDFParser.unstructured,
+def parse_paper(paper: Path, folder: Optional[Path] = None,
+                parser: PDFParser = PDFParser.unstructured,
                 mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
                 include_page_breaks: bool = False,
@@ -82,8 +81,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None, parser: PDFParser = 
     where.mkdir(parents=True, exist_ok=True)
     docs: list[Document] = loader.load()
 
-
-    if len(docs) ==1:
+    if len(docs) == 1:
         name = f"{paper.stem}.txt"
         f = where / name
         logger.info(f"writing {f}")
@@ -178,9 +176,9 @@ def app(ctx: Context):
 @click.option('--model', default='gpt-3.5-turbo-16k', help='model to use, gpt-3.5-turbo-16k by default')
 @click.option("--suffix", default=".txt", help="suffix in the files to evaluate, .txt by default")
 @click.option("--price", type=click.FLOAT, default=0.0001, help = "price for 1K tokens")
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_level: str):
-    _configure_logger(log_level)
+    configure_logger(log_level)
     where = Path(path)
     if where.is_dir():
         papers: list[Path] = traverse(where, lambda p: suffix in p.name)
@@ -200,6 +198,7 @@ def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_
         content = path.read_text(encoding="utf-8")
         return num_tokens_openai(content, model)
 
+
 @app.command("parse_paper")
 @click.option('--paper', type=click.Path(exists=True), help="paper pdf to parse")
 @click.option('--destination', type=click.STRING, default=".", help="destination folder")
@@ -209,9 +208,9 @@ def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred, unstructured parser specific")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included, unstructured parser specific")
 @click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def parse_paper_command(paper: str, destination: str, parser: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, recreate_parent: bool, log_level: str):
-    _configure_logger(log_level)
+    configure_logger(log_level)
     paper_file = Path(paper)
     destination_folder = Path(destination)
     logger.info(f"parsing paper {paper} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
@@ -229,10 +228,10 @@ def parse_paper_command(paper: str, destination: str, parser: str, mode: str, st
 @click.option('--cores', '-t', type=int, default=None, help='Number of cores to use')
 @click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
 @click.option('--cleaning', type=click.BOOL, default=True, help="if we should use basic cleaning for the text")
-@click.option('--log_level', type=click.Choice(["NONE", "DEBUG", "INFO", "ERROR", "WARNING", "DEBUG", "TRACE"], case_sensitive=False), default="debug", help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def parse_folder_command(folder: str, destination: str, parser: str, mode: str, strategy: str, infer_tables: bool,
                          include_page_breaks: bool, cores: Optional[int], recreate_parent: bool, cleaning: bool, log_level: str):
-    _configure_logger(log_level)
+    configure_logger(log_level)
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
     logger.info(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")

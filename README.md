@@ -7,6 +7,10 @@ Install the library with:
 ```bash
 pip install getpaper
 ```
+If you want to edit getpaper repository consider installing it locally:
+```
+pip install -e .
+```
 
 On linux systems you sometimes need to check that build essentials are installed:
 ```bash
@@ -96,6 +100,11 @@ getpaper/index.py index_papers --papers data/output/test/papers --folder data/ou
 You can run examples.py to see usage examples
 
 # Additional requirements
+
+index.py has local dependencies on other modules, for this reason if you are running it inside getpaper project folder consider having it installed locally:
+```bash
+pip install -e .
+```
 
 Detectron2 is required for using models from the layoutparser model zoo but is not automatically installed with this package. 
 For macOS and Linux, build from source with:

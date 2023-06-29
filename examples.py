@@ -8,11 +8,14 @@ import click
 from click import Context
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
+from loguru import logger
 from pynction import Try
-
+from getpaper.index import index_papers
 from getpaper.clean import proofread, clean_paper
+from getpaper.config import LogLevel, configure_logger, LOG_LEVELS
 from getpaper.download import download_papers
 from getpaper.parse import parse_papers
+from getpaper.splitting import OpenAISplitter
 
 
 @click.group(invoke_without_command=False)
@@ -44,8 +47,9 @@ def doi_download_parse(doi: str = "10.3390/ijms22031073", strategy: str = "auto"
     from getpaper.download import try_download
     from getpaper.parse import parse_paper
     where = Path("./data/output/test/papers").absolute().resolve()
-    try_download: Try[Path] = try_download(doi, where)
-    return try_download.run(lambda p: parse_paper(p.absolute().resolve(), strategy=strategy), lambda f: "it crashed :((((((")
+    try_download: Try[tuple] = try_download(doi, where)
+    print(try_download)
+    return try_download.run(lambda p: parse_paper(p[1].absolute().resolve(), strategy=strategy), lambda f: "it crashed :((((((")
 
 
 @app.command("doi_download_parse")
@@ -79,20 +83,22 @@ def clean():
 @app.command("doi_download_parse_index")
 @click.option('--doi', type=click.STRING, default="10.3390/ijms22031073", help="download doi")
 @click.option("--strategy", type=click.Choice(["auto", "hi_res", "fast"]), default = "auto", help="strategy used to convert the page")
-def doi_download_parse_index(doi: str, strategy: str = "auto"):
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def doi_download_parse_index(doi: str, strategy: str = "fast", log_level: str = LogLevel.DEBUG.value):
+    configure_logger(log_level)
     test_folder = Path("./data/output/test").absolute().resolve()
     download = doi_download_parse(doi, strategy)
-    from getpaper.index import index_papers
     collection_name = "example"
-    index = index_papers(test_folder / "papers", test_folder / "index", "example", 6000, "openai")
-    print(f"Chroma index saved to {index}, now testing what it stored there")
+    splitter = OpenAISplitter(tokens=6000)
     embeddings = OpenAIEmbeddings()
+    index = index_papers(test_folder / "papers", test_folder / "index", "example", splitter, "openai", True)
+    logger.info(f"Chroma index saved to {index}, now testing what it stored there")
     example_db: Chroma = Chroma(collection_name=collection_name, persist_directory=str(index), embedding_function=embeddings)
     client: chromadb.Client = example_db._client
     example_collection = client.get_collection(collection_name, embeddings)
-    print(f"printing part of the collection content of length {example_collection.count()}")
-    top_5 = example_collection.get(limit=5, include=["embeddings", "metadatas", "documents"])
-    print(f"TOP-5 IS {top_5}")
+    logger.info(f"printing part of the collection content of length {example_collection.count()}")
+    top_3 = example_collection.get(limit=3, include=["embeddings", "metadatas", "documents"])
+    logger.info(f"TOP-3 IS {top_3}")
 
 
 if __name__ == '__main__':
