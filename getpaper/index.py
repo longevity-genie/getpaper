@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from enum import Enum
 from pathlib import Path
 
 import click
@@ -8,12 +8,20 @@ from langchain.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIE
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Chroma, VectorStore, Qdrant
 from loguru import logger
 from pycomfort.files import *
+from qdrant_client import QdrantClient
 
 from getpaper.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
 from getpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents
+
+class VectorDatabase(Enum):
+    Chroma = "Chroma"
+    Qdrant = "Qdrant"
+
+
+VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
 
 
 def resolve_embeddings(embeddings_name: str) -> Embeddings:
@@ -28,7 +36,7 @@ def resolve_embeddings(embeddings_name: str) -> Embeddings:
         return OpenAIEmbeddings()
 
 
-def db_with_documents(db: Chroma, documents: list[Document],
+def db_with_documents(db: VectorStore, documents: list[Document],
                       splitter: TextSplitter,
                       id_field: Optional[str] = None):
     """
@@ -55,13 +63,94 @@ def db_with_documents(db: Chroma, documents: list[Document],
     return db
 
 
-def write_db(persist_directory: Path,
-             collection_name: str,
-             documents: list[Document],
-             splitter: TextSplitter,
-             id_field: Optional[str] = None,
-             embeddings: Optional[Embeddings] = None
-             ):
+def db_with_documents(db: VectorStore, documents: list[Document],
+                      splitter: TextSplitter,
+                      id_field: Optional[str] = None):
+    """
+    Function to add documents to a Chroma database.
+
+    Args:
+        db (Chroma or Qdrant): The database to add the documents to.
+        documents (list[Document]): The list of documents to add.
+        splitter (TextSplitter): The TextSplitter to use for splitting the documents.
+        debug (bool): If True, print debug information. Default is False.
+        id_field (Optional[str]): If provided, use this field from the document metadata as the ID. Default is None.
+
+    Returns:
+        Chroma: The updated database.
+    """
+    docs = splitter.split_documents(documents)
+    texts = [doc.page_content for doc in docs]
+    metadatas = [doc.metadata for doc in docs]
+    ids = [doc.metadata[id_field] for doc in docs] if id_field is not None else None
+    for doc in documents:
+        logger.trace(f"ADD TEXT: {doc.page_content}")
+        logger.trace(f"ADD METADATA {doc.metadata}")
+    db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
+    return db
+
+
+def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Optional[Embeddings], api_key: Optional[str] = None, distance_func: str = "Cosine"):
+    is_url = "ttp:" in path_or_url or "ttps:" in path_or_url
+    path: Optional[str] = None if is_url else path_or_url
+    url: Optional[str] = path_or_url if is_url else None
+    logger.info(f"initializing quadrant database at {path_or_url}")
+    client: QdrantClient = QdrantClient(
+        url=url,
+        port=6333,
+        grpc_port=6334,
+        prefer_grpc=is_url,
+        api_key=api_key,
+        path=path
+    )
+    from qdrant_client.http import models as rest
+    #client.recreate_collection(collection_name)
+    # Just do a single quick embedding to get vector size
+    partial_embeddings = embedding_function.embed_documents("probe")
+    vector_size = len(partial_embeddings[0])
+    distance_func = distance_func.upper()
+    client.recreate_collection(
+        collection_name=collection_name,
+        vectors_config=rest.VectorParams(
+            size=vector_size,
+            distance=rest.Distance[distance_func],
+        )
+    )
+    return Qdrant(client, collection_name=collection_name, embeddings=embedding_function)
+
+"""
+def init_db(database: VectorDatabase, collection_name: str, path_or_url: Optional[Union[Path, str]], embeddings: Optional[Embeddings]):
+    if database == VectorDatabase.Chroma:
+        return Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
+    elif database == VectorDatabase.Qdrant:
+        return init_qdrant(collection_name=collection_name, path_or_url=path_or_url, embedding_function=embeddings)
+"""
+
+def write_remote_db(url: str,
+                    collection_name: str,
+                    documents: list[Document],
+                    splitter: TextSplitter,
+                    id_field: Optional[str] = None,
+                    embeddings: Optional[Embeddings] = None,
+                    database: VectorDatabase = VectorDatabase.Qdrant):
+    if database == VectorDatabase.Qdrant:
+        logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
+        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings)
+        db_updated = db_with_documents(db, documents, splitter,  id_field)
+        return db_updated
+    else:
+        raise Exception(f"Remote Chroma is not yet supported by this script!")
+    pass
+
+
+def write_local_db(persist_directory: Path,
+                   collection_name: str,
+                   documents: list[Document],
+                   splitter: TextSplitter,
+                   id_field: Optional[str] = None,
+                   embeddings: Optional[Embeddings] = None,
+                   database: VectorDatabase = VectorDatabase.Qdrant
+                   ):
     """
     Writes the provided documents to a database.
 
@@ -88,8 +177,11 @@ def write_db(persist_directory: Path,
         embeddings = OpenAIEmbeddings()
 
     # Create a Chroma database with the specified collection name and embeddings, and save it in the specified directory
-    db = Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
-
+    if database == VectorDatabase.Qdrant:
+        db = init_qdrant(collection_name, str(where), embedding_function=embeddings)
+    else:
+        db = Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
+    #db = init_db(database, collection_name=collection_name, path_or_url=str(where), embedding_function=embeddings)
     # Add the documents to the database
     db_updated = db_with_documents(db, documents, splitter,  id_field)
 
@@ -110,38 +202,49 @@ def app(ctx: Context):
 
 
 @logger.catch
-def index_papers(papers_folder: Path, index: Path,
+def index_papers(papers_folder: Path,
                  collection: str,
                  splitter: SourceTextSplitter,
                  embeddings: str,
-                 include_meta: bool
-                 ) -> Path:
-    index.mkdir(exist_ok=True)
-    openai_key = load_environment_keys()
+                 include_meta: bool,
+                 folder: Optional[str] = None,
+                 url: Optional[str] = None,
+                 database: VectorDatabase = VectorDatabase.Chroma.value
+                 ):
+    load_environment_keys() # for openai key
     embeddings_function = resolve_embeddings(embeddings)
     logger.info(f"embeddings are {embeddings}")
-    where = index / f"{embeddings}_{splitter.chunk_size}_chunk"
-    where.mkdir(exist_ok=True, parents=True)
-    logger.info(f"writing index of papers to {where}")
     documents = papers_to_documents(papers_folder, include_meta=include_meta)
-    return write_db(where, collection, documents, splitter, embeddings=embeddings_function)
+    if folder is not None:
+        index = Path(folder)
+        index.mkdir(exist_ok=True)
+        where = index / f"{embeddings}_{splitter.chunk_size}_chunk"
+        where.mkdir(exist_ok=True, parents=True)
+        logger.info(f"writing index of papers to {where}")
+        return write_local_db(where, collection, documents, splitter, embeddings=embeddings_function)
+    elif url is not None:
+        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database)
+    else:
+        raise Exception("neither folder nor url are set")
+        pass
 
 
 @app.command("index_papers")
 @click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
-@click.option('--folder', type=click.Path(), help="folder to put chroma indexes to")
 @click.option('--collection', default='papers', help='papers collection name')
+@click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to")
+@click.option('--url', type=click.STRING, default=None, help="alternatively you can provide url, for example http://localhost:6333 for qdrant")
 @click.option('--splitter_name', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
 @click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai",
               help='size of the chunk for splitting')
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
+@click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_papers_command(papers: str, folder: str, collection: str, splitter_name: str, chunk_size: int, embeddings: str, include_meta: bool, log_level: str) -> Path:
+def index_papers_command(papers: str, collection: str, folder: str, url: str, splitter_name: str, chunk_size: int, embeddings: str, include_meta: bool, database: str, log_level: str) -> Path:
     configure_logger(log_level)
-    index = Path(folder)
     papers_folder = Path(papers)
-
+    assert not (folder is None and url is None), "either database folder or database url should be provided!"
     if splitter_name == "recursive":
         # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
         splitter = SourceTextSplitter(chunk_size=chunk_size)
@@ -150,7 +253,7 @@ def index_papers_command(papers: str, folder: str, collection: str, splitter_nam
     else:
         logger.warning(f"{splitter_name} is not supported, using openai tiktoken based splitter instead")
         splitter = OpenAISplitter(tokens=chunk_size)
-    return index_papers(papers_folder, index, collection, splitter, embeddings, include_meta)
+    return index_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url, database=VectorDatabase[database])
 
 
 if __name__ == '__main__':

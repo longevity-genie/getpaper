@@ -32,4 +32,5 @@ dependencies:
       - semanticscholar
       - loguru
       - pdfminer
+      - qdrant-client
       #- 'git+git+https://github.com/facebookresearch/detectron2.git'

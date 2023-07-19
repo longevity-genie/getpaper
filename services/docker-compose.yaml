@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.3.2
+    ports:
+      - 3000:3000
+      - 6333:6333
+      - 6334:6334
+    volumes:
+      - ./qdrant_storage:/qdrant/storage

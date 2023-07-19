@@ -90,9 +90,17 @@ getpaper/parse.py count_tokens --path /home/antonkulaga/sources/non-animal-model
 
 We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
+
 For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
 ```bash
 getpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
+```
+
+It is possible to use both Chroma and Qdrant. To use qdrant we provide docker-compose file to set it up:
+```bash
+cd services
+docker compose -f docker-compose.yaml up
+getpaper/index.py index_papers --papers data/output/test/papers --url http://localhost:6333 --collection mypapers --chunk_size 6000 --database Qdrant
 ```
 
 # Examples
