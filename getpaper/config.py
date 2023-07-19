@@ -26,8 +26,10 @@ def configure_logger(log_level: Union[str, LogLevel]):
     if level.upper() != LogLevel.NONE.value:
         logger.add(sys.stdout, level=level.upper())
 
+
 def load_environment_keys(debug: bool = True):
-    e = dotenv.find_dotenv()
+    e = dotenv.find_dotenv(usecwd=True)
+    print(e)
     if debug:
         print(f"environment found at {e}")
     has_env: bool = load_dotenv(e, verbose=True, override=True)

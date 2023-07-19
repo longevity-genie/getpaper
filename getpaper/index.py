@@ -132,10 +132,11 @@ def write_remote_db(url: str,
                     splitter: TextSplitter,
                     id_field: Optional[str] = None,
                     embeddings: Optional[Embeddings] = None,
-                    database: VectorDatabase = VectorDatabase.Qdrant):
+                    database: VectorDatabase = VectorDatabase.Qdrant,
+                    key: Optional[str] = None):
     if database == VectorDatabase.Qdrant:
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
-        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings)
+        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=key)
         db_updated = db_with_documents(db, documents, splitter,  id_field)
         return db_updated
     else:
@@ -201,17 +202,17 @@ def app(ctx: Context):
     pass
 
 
-@logger.catch
-def index_papers(papers_folder: Path,
-                 collection: str,
-                 splitter: SourceTextSplitter,
-                 embeddings: str,
-                 include_meta: bool,
-                 folder: Optional[str] = None,
-                 url: Optional[str] = None,
-                 database: VectorDatabase = VectorDatabase.Chroma.value
-                 ):
-    load_environment_keys() # for openai key
+def index_selected_papers(papers_folder: Path,
+                          collection: str,
+                          splitter: SourceTextSplitter,
+                          embeddings: str,
+                          include_meta: bool,
+                          folder: Optional[str] = None,
+                          url: Optional[str] = None,
+                          key: Optional[str] = None,
+                          database: VectorDatabase = VectorDatabase.Chroma.value
+                          ):
+    openai_key = load_environment_keys() #for openai key
     embeddings_function = resolve_embeddings(embeddings)
     logger.info(f"embeddings are {embeddings}")
     documents = papers_to_documents(papers_folder, include_meta=include_meta)
@@ -223,7 +224,7 @@ def index_papers(papers_folder: Path,
         logger.info(f"writing index of papers to {where}")
         return write_local_db(where, collection, documents, splitter, embeddings=embeddings_function)
     elif url is not None:
-        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database)
+        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key)
     else:
         raise Exception("neither folder nor url are set")
         pass
@@ -234,6 +235,7 @@ def index_papers(papers_folder: Path,
 @click.option('--collection', default='papers', help='papers collection name')
 @click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to")
 @click.option('--url', type=click.STRING, default=None, help="alternatively you can provide url, for example http://localhost:6333 for qdrant")
+@click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--splitter_name', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
 @click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai",
@@ -241,11 +243,11 @@ def index_papers(papers_folder: Path,
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
 @click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_papers_command(papers: str, collection: str, folder: str, url: str, splitter_name: str, chunk_size: int, embeddings: str, include_meta: bool, database: str, log_level: str) -> Path:
-    configure_logger(log_level)
+def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, splitter_name: str, chunk_size: int, embeddings: str, include_meta: bool, database: str, log_level: str) -> Path:
+    #configure_logger(log_level)
     papers_folder = Path(papers)
-    assert not (folder is None and url is None), "either database folder or database url should be provided!"
-    if splitter_name == "recursive":
+    assert not (folder is None and url is None and key is None), "either database folder or database url or api_key should be provided!"
+    if splitter_name == "openai":
         # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
         splitter = SourceTextSplitter(chunk_size=chunk_size)
     elif splitter_name == "recursive":
@@ -253,7 +255,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, sp
     else:
         logger.warning(f"{splitter_name} is not supported, using openai tiktoken based splitter instead")
         splitter = OpenAISplitter(tokens=chunk_size)
-    return index_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url, database=VectorDatabase[database])
+    return index_selected_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url, database=VectorDatabase[database], key=key)
 
 
 if __name__ == '__main__':

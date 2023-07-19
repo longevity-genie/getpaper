@@ -10,7 +10,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from loguru import logger
 from pynction import Try
-from getpaper.index import index_papers
+from getpaper.index import index_selected_papers
 from getpaper.clean import proofread, clean_paper
 from getpaper.config import LogLevel, configure_logger, LOG_LEVELS
 from getpaper.download import download_papers
@@ -91,7 +91,7 @@ def doi_download_parse_index(doi: str, strategy: str = "fast", log_level: str = 
     collection_name = "example"
     splitter = OpenAISplitter(tokens=6000)
     embeddings = OpenAIEmbeddings()
-    index = index_papers(test_folder / "papers", test_folder / "index", "example", splitter, "openai", True)
+    index = index_selected_papers(test_folder / "papers", test_folder / "index", "example", splitter, "openai", True)
     logger.info(f"Chroma index saved to {index}, now testing what it stored there")
     example_db: Chroma = Chroma(collection_name=collection_name, persist_directory=str(index), embedding_function=embeddings)
     client: chromadb.Client = example_db._client

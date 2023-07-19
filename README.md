@@ -100,7 +100,14 @@ It is possible to use both Chroma and Qdrant. To use qdrant we provide docker-co
 ```bash
 cd services
 docker compose -f docker-compose.yaml up
+```
+then you can run the indexing of the paper with Qdrant:
+```
 getpaper/index.py index_papers --papers data/output/test/papers --url http://localhost:6333 --collection mypapers --chunk_size 6000 --database Qdrant
+```
+Note: if you want to use Qdrant cloud you do not need docker-compose, but you need to provide a key and look at qdrant cloud setting for the url to give.
+```
+getpaper/index.py index_papers --papers data/output/test/papers --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key put_your_key_here --collection mypapers --chunk_size 6000 --database Qdrant
 ```
 
 # Examples
