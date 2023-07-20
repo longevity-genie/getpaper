@@ -24,11 +24,12 @@ def configure_logger(log_level: Union[str, LogLevel]):
     level = log_level.value if isinstance(log_level, LogLevel) else log_level
     # yes, it is duplicate but it is nice to avoid cross-module dependencies here
     if level.upper() != LogLevel.NONE.value:
+        logger
         logger.add(sys.stdout, level=level.upper())
 
 
-def load_environment_keys(debug: bool = True):
-    e = dotenv.find_dotenv(usecwd=True)
+def load_environment_keys(debug: bool = True, usecwd:bool = False):
+    e = dotenv.find_dotenv(usecwd=usecwd)
     print(e)
     if debug:
         print(f"environment found at {e}")

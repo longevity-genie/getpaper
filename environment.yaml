@@ -10,6 +10,7 @@ dependencies:
   - setuptools
   - python-dotenv
   - pytorch
+  - pdfminer.six
   - jupyterlab #for examples only
   - pip:
       - pyfunctional
@@ -23,7 +24,7 @@ dependencies:
       - openai
       - chromadb
       - python-dotenv
-      - langchain>=0.0.202
+      - langchain
       - unstructured
       - unstructured-inference
       - unstructured[local-inference]
@@ -31,6 +32,7 @@ dependencies:
       - Deprecated
       - semanticscholar
       - loguru
-      - pdfminer
+      - pdfminer.six
       - qdrant-client
+      - llama-cpp-python
       #- 'git+git+https://github.com/facebookresearch/detectron2.git'

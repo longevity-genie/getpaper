@@ -26,11 +26,11 @@ After the installation you can either import the library into your python code o
 If you install from pip calling _download_ will mean calling getpaper/download.py , for _parse_ - getpaper/parse.py , for _index_ - getpaper/index.py
 
 ```bash
-download download download_pubmed --pubmed 22266545 --folder papers --name pmid
+download download_pubmed --pubmed 22266545 --folder papers --name pmid
 ```
 Downloads the paper with pubmed id into the folder 'papers' and uses the pubmed id as name
 ```bash
-download download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder papers
+download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder papers
 ```
 Downloads the paper with DOI into the folder papers, as --name is not specified doi is used as name
 
@@ -88,7 +88,7 @@ getpaper/parse.py count_tokens --path /home/antonkulaga/sources/non-animal-model
 
 ## Indexing papers
 
-We also provide features to index the papers with openai or lambda embeddings and save them in chromadb vector store.
+We also provide features to index the papers with openai or llama embeddings and save them in chromadb vector store.
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
 
 For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
@@ -105,10 +105,22 @@ then you can run the indexing of the paper with Qdrant:
 ```
 getpaper/index.py index_papers --papers data/output/test/papers --url http://localhost:6333 --collection mypapers --chunk_size 6000 --database Qdrant
 ```
+You can also take a look if things were added to the collection with qdrant web UI by checking http://localhost:6333/dashboard
+
+### Indexing with Llama-2 embeddings ###
+You can also use llama-2 embeddings if you install llama-cpp-python and pass a path to the model, for example for https://huggingface.co/TheBloke/Llama-2-13B-GGML model:
+```
+getpaper/index.py index_papers --papers data/output/test/papers --url http://localhost:6333 --collection papers_llama2_2000 --chunk_size 2000 --database Qdrant --embeddings llama --model /home/antonkulaga/sources/getpaper/data/models/llama-2-13b-chat.ggmlv3.q2_K.bin
+```
+Instead of explicitly pathing the model path you can also include the path to LLAMA_MODEL to the .env file as:
+```
+LLAMA_MODEL="/home/antonkulaga/sources/getpaper/data/models/llama-2-13b-chat.ggmlv3.q2_K.bin"
+```
 Note: if you want to use Qdrant cloud you do not need docker-compose, but you need to provide a key and look at qdrant cloud setting for the url to give.
 ```
 getpaper/index.py index_papers --papers data/output/test/papers --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key put_your_key_here --collection mypapers --chunk_size 6000 --database Qdrant
 ```
+Note: there are temporal issues with embeddings for llama.
 
 # Examples
 

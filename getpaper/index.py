@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 from enum import Enum
 from pathlib import Path
 
@@ -24,11 +25,13 @@ class VectorDatabase(Enum):
 VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
 
 
-def resolve_embeddings(embeddings_name: str) -> Embeddings:
+def resolve_embeddings(embeddings_name: str, model_path: Optional[Union[Path, str]] = None) -> Embeddings:
     if embeddings_name == "openai":
         return OpenAIEmbeddings()
-    elif embeddings_name == "lambda":
-        return LlamaCppEmbeddings()
+    elif embeddings_name == "llama":
+        if model_path is None:
+            logger.error(f"for llama embeddings for {model_path} model")
+        return LlamaCppEmbeddings(model_path = str(model_path))
     elif embeddings_name == "vertexai":
         return VertexAIEmbeddings()
     else:
@@ -90,7 +93,7 @@ def db_with_documents(db: VectorStore, documents: list[Document],
     return db
 
 
-def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Optional[Embeddings], api_key: Optional[str] = None, distance_func: str = "Cosine"):
+def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Optional[Embeddings], api_key: Optional[str] = None, distance_func: str = "Cosine", prefer_grpc: bool = False):
     is_url = "ttp:" in path_or_url or "ttps:" in path_or_url
     path: Optional[str] = None if is_url else path_or_url
     url: Optional[str] = path_or_url if is_url else None
@@ -99,7 +102,7 @@ def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Opt
         url=url,
         port=6333,
         grpc_port=6334,
-        prefer_grpc=is_url,
+        prefer_grpc=is_url if prefer_grpc is None else prefer_grpc,
         api_key=api_key,
         path=path
     )
@@ -118,13 +121,6 @@ def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Opt
     )
     return Qdrant(client, collection_name=collection_name, embeddings=embedding_function)
 
-"""
-def init_db(database: VectorDatabase, collection_name: str, path_or_url: Optional[Union[Path, str]], embeddings: Optional[Embeddings]):
-    if database == VectorDatabase.Chroma:
-        return Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
-    elif database == VectorDatabase.Qdrant:
-        return init_qdrant(collection_name=collection_name, path_or_url=path_or_url, embedding_function=embeddings)
-"""
 
 def write_remote_db(url: str,
                     collection_name: str,
@@ -133,10 +129,10 @@ def write_remote_db(url: str,
                     id_field: Optional[str] = None,
                     embeddings: Optional[Embeddings] = None,
                     database: VectorDatabase = VectorDatabase.Qdrant,
-                    key: Optional[str] = None):
+                    key: Optional[str] = None, prefer_grpc: bool = False):
     if database == VectorDatabase.Qdrant:
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
-        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=key)
+        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=key, prefer_grpc=prefer_grpc)
         db_updated = db_with_documents(db, documents, splitter,  id_field)
         return db_updated
     else:
@@ -150,7 +146,8 @@ def write_local_db(persist_directory: Path,
                    splitter: TextSplitter,
                    id_field: Optional[str] = None,
                    embeddings: Optional[Embeddings] = None,
-                   database: VectorDatabase = VectorDatabase.Qdrant
+                   database: VectorDatabase = VectorDatabase.Chroma,
+                   prefer_grpc: bool = False
                    ):
     """
     Writes the provided documents to a database.
@@ -179,7 +176,7 @@ def write_local_db(persist_directory: Path,
 
     # Create a Chroma database with the specified collection name and embeddings, and save it in the specified directory
     if database == VectorDatabase.Qdrant:
-        db = init_qdrant(collection_name, str(where), embedding_function=embeddings)
+        db = init_qdrant(collection_name, str(where), embedding_function=embeddings,  prefer_grpc = prefer_grpc)
     else:
         db = Chroma(collection_name=collection_name, persist_directory=str(where), embedding_function=embeddings)
     #db = init_db(database, collection_name=collection_name, path_or_url=str(where), embedding_function=embeddings)
@@ -207,24 +204,26 @@ def index_selected_papers(papers_folder: Path,
                           splitter: SourceTextSplitter,
                           embeddings: str,
                           include_meta: bool,
-                          folder: Optional[str] = None,
+                          folder: Optional[Union[Path,str]] = None,
                           url: Optional[str] = None,
                           key: Optional[str] = None,
-                          database: VectorDatabase = VectorDatabase.Chroma.value
+                          database: VectorDatabase = VectorDatabase.Chroma.value,
+                          model: Optional[Union[Path, str]] = None,
+                          prefer_grpc: Optional[bool] = None
                           ):
     openai_key = load_environment_keys() #for openai key
-    embeddings_function = resolve_embeddings(embeddings)
+    embeddings_function = resolve_embeddings(embeddings, model)
     logger.info(f"embeddings are {embeddings}")
     documents = papers_to_documents(papers_folder, include_meta=include_meta)
     if folder is not None:
-        index = Path(folder)
+        index = Path(folder) if isinstance(folder, str) else folder
         index.mkdir(exist_ok=True)
         where = index / f"{embeddings}_{splitter.chunk_size}_chunk"
         where.mkdir(exist_ok=True, parents=True)
         logger.info(f"writing index of papers to {where}")
-        return write_local_db(where, collection, documents, splitter, embeddings=embeddings_function)
+        return write_local_db(where, collection, documents, splitter, embeddings=embeddings_function, prefer_grpc = prefer_grpc, database=database)
     elif url is not None:
-        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key)
+        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key, prefer_grpc = prefer_grpc)
     else:
         raise Exception("neither folder nor url are set")
         pass
@@ -238,13 +237,16 @@ def index_selected_papers(papers_folder: Path,
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--splitter_name', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
-@click.option('--embeddings', type=click.Choice(["openai", "lambda", "vertexai"]), default="openai",
+@click.option('--embeddings', type=click.Choice(["openai", "llama", "vertexai"]), default="openai",
               help='size of the chunk for splitting')
+@click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
 @click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
+@click.option('--prefer_grpc', type=click.BOOL, default = None)
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, splitter_name: str, chunk_size: int, embeddings: str, include_meta: bool, database: str, log_level: str) -> Path:
-    #configure_logger(log_level)
+def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, splitter_name: str, chunk_size: int, embeddings: str, model: Optional[str], include_meta: bool, database: str, prefer_grpc: Optional[bool], log_level: str) -> Path:
+    configure_logger(log_level)
+    load_environment_keys(usecwd=True)
     papers_folder = Path(papers)
     assert not (folder is None and url is None and key is None), "either database folder or database url or api_key should be provided!"
     if splitter_name == "openai":
@@ -255,7 +257,15 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
     else:
         logger.warning(f"{splitter_name} is not supported, using openai tiktoken based splitter instead")
         splitter = OpenAISplitter(tokens=chunk_size)
-    return index_selected_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url, database=VectorDatabase[database], key=key)
+    if embeddings == "llama" and model is None:
+        model = os.getenv("LLAMA_MODEL")
+
+    return index_selected_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url,
+                                 database=VectorDatabase[database],
+                                 key=key,
+                                 model=model,
+                                 prefer_grpc=prefer_grpc
+                                 )
 
 
 if __name__ == '__main__':

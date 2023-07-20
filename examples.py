@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import List
-
 import chromadb
 import click
 from click import Context
@@ -10,7 +9,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from loguru import logger
 from pynction import Try
-from getpaper.index import index_selected_papers
+from getpaper.index import index_selected_papers, VectorDatabase
 from getpaper.clean import proofread, clean_paper
 from getpaper.config import LogLevel, configure_logger, LOG_LEVELS
 from getpaper.download import download_papers
@@ -67,7 +66,7 @@ def parse_papers_command():
     return parse_papers(papers_folder, destination_folder, recreate_parent=True)
 
 @app.command("clean")
-def clean():
+def clean_command():
     papers_folder = Path("./data/output/test/parsed_papers").absolute().resolve()
     paper = papers_folder / "10.1038"  / "s41597-020-00710-z_unstructured.txt"
     text = paper.read_text(encoding="utf-8")
@@ -84,21 +83,21 @@ def clean():
 @click.option('--doi', type=click.STRING, default="10.3390/ijms22031073", help="download doi")
 @click.option("--strategy", type=click.Choice(["auto", "hi_res", "fast"]), default = "auto", help="strategy used to convert the page")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def doi_download_parse_index(doi: str, strategy: str = "fast", log_level: str = LogLevel.DEBUG.value):
+def doi_download_parse_index_command(doi: str, strategy: str = "fast", log_level: str = LogLevel.DEBUG.value):
     configure_logger(log_level)
     test_folder = Path("./data/output/test").absolute().resolve()
     download = doi_download_parse(doi, strategy)
     collection_name = "example"
     splitter = OpenAISplitter(tokens=6000)
     embeddings = OpenAIEmbeddings()
-    index = index_selected_papers(test_folder / "papers", test_folder / "index", "example", splitter, "openai", True)
+    index = index_selected_papers(test_folder / "papers", "example", splitter, "openai", folder = test_folder / "index",database=VectorDatabase.Chroma.value)
     logger.info(f"Chroma index saved to {index}, now testing what it stored there")
     example_db: Chroma = Chroma(collection_name=collection_name, persist_directory=str(index), embedding_function=embeddings)
     client: chromadb.Client = example_db._client
     example_collection = client.get_collection(collection_name, embeddings)
     logger.info(f"printing part of the collection content of length {example_collection.count()}")
     top_3 = example_collection.get(limit=3, include=["embeddings", "metadatas", "documents"])
-    logger.info(f"TOP-3 IS {top_3}")
+    #logger.info(f"TOP-3 IS {top_3}")
 
 
 if __name__ == '__main__':
