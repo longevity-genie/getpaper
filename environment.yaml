@@ -13,18 +13,11 @@ dependencies:
   - pdfminer.six
   - jupyterlab #for examples only
   - pip:
-      - pyfunctional
-      - pycomfort
-      - more-itertools
-      - pynction
+      - pycomfort>=0.0.13
       - click
       - scidownl
       - twine
-      - tiktoken
-      - openai
-      - chromadb
       - python-dotenv
-      - langchain
       - unstructured
       - unstructured-inference
       - unstructured[local-inference]
@@ -32,7 +25,7 @@ dependencies:
       - Deprecated
       - semanticscholar
       - loguru
+      - langchain
+      - pycomfort
       - pdfminer.six
-      - qdrant-client
-      - llama-cpp-python
       #- 'git+git+https://github.com/facebookresearch/detectron2.git'

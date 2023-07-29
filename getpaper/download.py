@@ -19,7 +19,7 @@ from semanticscholar import SemanticScholar
 from semanticscholar.Paper import Paper
 import sys
 
-from getpaper.config import LOG_LEVELS, configure_logger, LogLevel
+from pycomfort.config import LOG_LEVELS, configure_logger, LogLevel
 
 DownloadedPaper = (str, Optional[Path], Optional[Path]) #type synonim for doi, Path, Path of the downloaded paper
 

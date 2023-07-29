@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import Optional
 import click
 from click import Context
+
 from langchain.chat_models import ChatOpenAI
 from langchain import PromptTemplate, LLMChain
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
-from getpaper.config import load_environment_keys
-from getpaper.splitting import OpenAISplitter, paper_to_document
+from pycomfort.config import load_environment_keys
 
 from langchain.schema import Document
 
@@ -69,7 +69,7 @@ def proofread_document(doc: Document, proofread_chain: LLMChain):
         metadata=meta
     )
 
-
+"""
 def clean_paper_as_document(paper: Path, tokens: int = 12000) -> Document:
     splitter = OpenAISplitter(tokens)
     doc = paper_to_document(paper)
@@ -90,11 +90,7 @@ def clean_paper(paper: Path, tokens: int = 10000, destination: Optional[Path] = 
     where.write_text(doc.page_content)
     print(f"cleaned result written to {where}")
     return where
-
-
-
-
-
+"""
 
 
 @app.command("clean_paper")

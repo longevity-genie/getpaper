@@ -17,7 +17,7 @@ from pynction import Try
 from loguru import logger
 import sys
 
-from getpaper.config import configure_logger, LOG_LEVELS, LogLevel
+from pycomfort.config import configure_logger, LOG_LEVELS, LogLevel
 
 
 class PDFParser(Enum):
