@@ -13,19 +13,19 @@ dependencies:
   - pdfminer.six
   - jupyterlab #for examples only
   - pip:
-      - pycomfort>=0.0.13
-      - click
+      - pycomfort>=0.0.14
+      - polars>=0.19.9
+      - langchain>=0.0.320
+      - click>=8.1.7
       - scidownl
       - twine
       - python-dotenv
-      - unstructured
-      - unstructured-inference
+      - unstructured>=0.10.25
+      - unstructured-inference>=0.7.9
       - unstructured[local-inference]
       - unstructured.PaddleOCR
       - Deprecated
-      - semanticscholar
+      - semanticscholar>=0.5.0
       - loguru
-      - langchain
-      - pycomfort
       - pdfminer.six
       #- 'git+git+https://github.com/facebookresearch/detectron2.git'

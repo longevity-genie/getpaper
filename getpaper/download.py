@@ -30,6 +30,7 @@ def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create
         if not result.parent.exists():
             result.parent.mkdir(exist_ok=True, parents=True)
     return result
+
 def schihub_doi(doi: str, paper: Path, meta: Optional[Path] = None) -> (str, Optional[Path], Optional[Path]):
     doi_url = f"https://doi.org/{doi}"
     scihub_download(doi_url, paper_type="doi", out=str(paper))
@@ -197,7 +198,7 @@ def app(ctx: Context):
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG, help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = LogLevel.DEBUG.value):
     configure_logger(log_level)
     logger.info(f"downloading {doi} to {folder}")
@@ -220,7 +221,7 @@ def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG, help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = "NONE") -> Try:
     configure_logger(log_level)
     logger.debug(f"downloading {doi} to {folder}")

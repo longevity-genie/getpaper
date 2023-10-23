@@ -26,11 +26,11 @@ After the installation you can either import the library into your python code o
 If you install from pip calling _download_ will mean calling getpaper/download.py , for _parse_ - getpaper/parse.py , for _index_ - getpaper/index.py
 
 ```bash
-download download_pubmed --pubmed 22266545 --folder papers --name pmid
+download download_pubmed --pubmed 22266545 --folder "data/output/test/papers" --name pmid
 ```
 Downloads the paper with pubmed id into the folder 'papers' and uses the pubmed id as name
 ```bash
-download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder papers
+download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder "data/output/test/papers"
 ```
 Downloads the paper with DOI into the folder papers, as --name is not specified doi is used as name
 

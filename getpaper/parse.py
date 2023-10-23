@@ -144,6 +144,9 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
     errors = []
 
     cores = cpu_count() if cores is None else min(cpu_count(), cores)
+
+
+
     with Pool(cores) as p:
         parse_func = partial(try_parse_paper, folder=destination, parser=parser, mode=mode, strategy=strategy,
                              pdf_infer_table_structure=pdf_infer_table_structure,
