@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.3.6'
+VERSION = '0.3.7'
 DESCRIPTION = 'getpaper - papers download made easy!'
 LONG_DESCRIPTION = 'A package with python functions for downloading papers'
 
@@ -21,9 +21,11 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['pycomfort', 'click',
-                      'unstructured', 'unstructured-inference', 'unstructured[local-inference]', 'unstructured.PaddleOCR',
-                      'scidownl', 'Deprecated', 'semanticscholar', 'pdfminer.six', 'langchain'],
+    install_requires=['pycomfort>=0.0.14', 'click',
+                      'unstructured>=0.10.25', 'unstructured-inference>=0.7.9',
+                      'unstructured[local-inference]', 'unstructured.PaddleOCR>=2.6.1.3',
+                      'scidownl>=1.0.2', 'Deprecated', 'semanticscholar>=0.5.0', 'pdfminer.six', 'langchain>=0.0.333',
+                      'PyMuPDF>=1.22.3', 'pdfplumber>=0.10.3'],
     keywords=['python', 'utils', 'files', 'papers', 'download'],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
