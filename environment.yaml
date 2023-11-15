@@ -11,6 +11,7 @@ dependencies:
   - python-dotenv
   - pytorch
   - pdfminer.six
+  - pdfplumber
   - jupyterlab #for examples only
   - pip:
       - pycomfort>=0.0.14
@@ -25,5 +26,6 @@ dependencies:
       - Deprecated
       - semanticscholar>=0.5.0
       - loguru
+      - langchain>=0.0.333
       - pdfminer.six
       #- 'git+git+https://github.com/facebookresearch/detectron2.git'
