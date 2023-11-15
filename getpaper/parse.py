@@ -3,7 +3,7 @@ from enum import Enum
 from functools import partial
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional, List
 import click
 import loguru
 import pynction.monads.try_monad
@@ -60,7 +60,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
                 mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
                 include_page_breaks: bool = False
-                ) -> Union[List[Path], Path]:
+                ) -> List[Path]:
     """
     :param paper:
     :param folder:
@@ -95,15 +95,15 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     if upd_where.exists() and subfolder and do_not_reparse and files(upd_where).len() > 0:
         logger.info(f"avoiding reparsing, providing result {upd_where}")
         print(f"avoiding reparsing, providing result {upd_where}")
-        return upd_where
+        return [upd_where]
     if len(docs) == 1:
-        return upd_where if subfolder else [write_parsed(docs[0], paper, upd_where, cleaning)]
+        return [upd_where] if subfolder else [write_parsed(docs[0], paper, upd_where, cleaning)]
     else:
         acc = []
         for i, doc in enumerate(docs):
             f = write_parsed(doc, paper, upd_where, cleaning, i)
             acc.append(f)
-        return upd_where if subfolder else acc
+        return [upd_where] if subfolder else acc
 
 
 def write_parsed(doc: Document, paper: Path, where: Path, cleaning: bool, i: int = -1):
