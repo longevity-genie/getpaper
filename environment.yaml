@@ -14,8 +14,6 @@ dependencies:
   - jupyterlab #for examples only
   - pip:
       - pycomfort>=0.0.14
-      - polars>=0.19.9
-      - langchain>=0.0.320
       - click>=8.1.7
       - scidownl
       - twine
