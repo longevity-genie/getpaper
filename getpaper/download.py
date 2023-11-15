@@ -25,18 +25,28 @@ DownloadedPaper = (str, Optional[Path], Optional[Path]) #type synonim for doi, P
 
 
 def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create_parent: bool = True) -> Path:
-    result = (folder / f"{doi}.pdf").absolute().resolve() if name is None else (folder / f"{name.replace('.pdf', '')}.pdf").absolute().resolve()
+    result = (folder / f"{doi}.pdf").absolute().resolve() if name is None else (folder / f"{name.replace('.pdf', '')}.pdf").abewsw1wswqssolute().resolve()
     if create_parent:
         if not result.parent.exists():
             result.parent.mkdir(exist_ok=True, parents=True)
     return result
 
 def schihub_doi(doi: str, paper: Path, meta: Optional[Path] = None) -> (str, Optional[Path], Optional[Path]):
+    """
+    If you use scihub you should know that it can resolve both openaccess and paywalled articles.
+    If you download paywalled articles it can be illegal in some of the countries.
+    We are not responsible for how you are using the software, so do it at your own risk.
+    :param doi: papers doi
+    :param paper:
+    :param meta:
+    :return:
+    """
     doi_url = f"https://doi.org/{doi}"
     scihub_download(doi_url, paper_type="doi", out=str(paper))
     if paper.exists():
         logger.info(f"downloaded {doi_url} to {paper}")
     return doi, paper, meta
+
 
 #@logger.catch(reraise=False)
 def doi_from_pubmed(pubmed_id: str):
@@ -72,7 +82,10 @@ def try_doi_from_pubmed(pubmed: str) -> Try[str]:
 
 
 #@logger.catch(reraise=False)
-def download_semantic_scholar(paper_id: str, download: Optional[Path] = None, metadata: Optional[Path] = None, raise_on_no_pdf: bool = False) -> [str, str, str]:
+def download_semantic_scholar(paper_id: str,
+                              download: Optional[Path] = None,
+                              metadata: Optional[Path] = None,
+                              raise_on_no_pdf: bool = False, headers: Optional[dict] = None) -> [str, str, str]:
     sch = SemanticScholar()
     paper: Paper = sch.get_paper(paper_id)
     if metadata is not None:
@@ -83,7 +96,11 @@ def download_semantic_scholar(paper_id: str, download: Optional[Path] = None, me
     if download is not None:
         if paper.openAccessPdf is not None and "url" in paper.openAccessPdf:
             url = paper.openAccessPdf["url"]
-            response = requests.get(url)
+            if headers is None:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+                }
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             download.touch(exist_ok=True)
             download.write_bytes(response.content)
@@ -102,13 +119,14 @@ def try_download(doi: str,
                  destination: Path,
                  skip_if_exist: bool = True,
                  name: Optional[str] = None,
-                 ) -> Try:
+                 scihub_on_fail: bool = False
+                 ) -> Try[tuple]:
     """
-    downloads the paper by doi
     :param doi:
     :param destination: where to put the results
     :param skip_if_exist:
     :param name:
+    :param scihub_on_fail: if sci-hub should be used as a backup resolver (False by default). Sci-hub can resolve both open-access or paywalled articles. Resolving the latest can be illegal in some of the countries. So, make sure you know what you are doing if you put True here.
     :return: Try monad with the result
     """
     paper = _pdf_path_for_doi(doi, destination, name, True)
@@ -119,26 +137,31 @@ def try_download(doi: str,
             return Try.of(lambda: download_semantic_scholar(doi, None, meta))
         else:
             logger.info(f"paper {paper} already exists, skipping!")
-    return Try.of(lambda: download_semantic_scholar(doi, paper, meta, raise_on_no_pdf=True)).catch(lambda _: schihub_doi(doi, paper, meta))
+            return Try.of(lambda: (doi, paper, meta))
+    result = Try.of(lambda: download_semantic_scholar(doi, paper, meta, raise_on_no_pdf=True))
+    return result.catch(lambda _: schihub_doi(doi, paper, meta)) if scihub_on_fail else result
 
 
-def download_pubmed(pubmed: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None):
+def download_pubmed(pubmed: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None, scihub_on_fail: bool = False):
     """
     downloads paper by its pubmed id
     :param pubmed: pubmed id
     :param destination: where to store the result
     :param skip_if_exist:
     :param name:
+    :param scihub_on_fail: if SciHub should be used as back up resolver. False by default. For paywalled articles it can be illegal in some of the countries, so use it at your own risk.
     :return:
     """
     try_resolve = try_doi_from_pubmed(pubmed)
-    return try_resolve.flat_map(lambda doi: try_download(doi, destination, skip_if_exist, name))
+    return try_resolve.flat_map(lambda doi: try_download(doi, destination, skip_if_exist, name, scihub_on_fail))
 
 
 async def download_async(executor: Executor,
                              doi: str, destination: Path,
                              skip_if_exist: bool = True,
-                             name: Optional[str] = None) -> DownloadedPaper:
+                             name: Optional[str] = None,
+                             scihub_on_fail: bool = False
+                         ) -> DownloadedPaper:
     """
     Asynchronously download a paper using its DOI.
 
@@ -148,6 +171,8 @@ async def download_async(executor: Executor,
         destination (Path): The directory where the downloaded paper should be stored.
         skip_if_exist (bool): If True, skip the download if the paper already exists in the destination. Default is True.
         name (Optional[str]): The name of the file to save the paper as. If not provided, use the DOI. Default is None.
+        param scihub_on_fail: if SciHub should be used as back up resolver. False by default. For paywalled articles it can be illegal in some of the countries, so use it at your own risk.
+
 
     Returns:
         (str, Path): A tuple containing the DOI of the paper and the path to the downloaded paper.
@@ -159,23 +184,24 @@ async def download_async(executor: Executor,
     # Get a reference to the current event loop
     loop = asyncio.get_event_loop()
 
-    _ = await loop.run_in_executor(executor, lambda: try_download(doi, destination, skip_if_exist, name))
+    _ = await loop.run_in_executor(executor, lambda: try_download(doi, destination, skip_if_exist, name, scihub_on_fail))
 
     # Return the DOI and path to the downloaded paper
     return doi, Path, meta
 
 
-def download_papers(dois: List[str], destination: Path, threads: int) -> (OrderedDict[str, Path], List[str]):
+def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_fail: bool = False) -> (OrderedDict[str, Path], List[str]):
     """
     :param dois: List of DOIs of the papers to download
     :param destination: Directory where to put the downloaded papers
     :param threads: Maximum number of concurrent downloads
+    :param scihub_on_fail: if SciHub should be used as back up resolver. False by default. For paywalled articles it can be illegal in some of the countries, so use it at your own risk.
     :return: tuple with OrderedDict of succeeded results and list of failed dois)
     """
     # Create a ThreadPoolExecutor with desired number of threads
     with ThreadPoolExecutor(max_workers=threads) as executor:
         # Create a coroutine for each download
-        coroutines = [download_async(executor, doi, destination) for doi in dois]
+        coroutines = [download_async(executor, doi, destination, scihub_on_fail=scihub_on_fail) for doi in dois]
 
         # Get the current event loop, run the downloads, and wait for all of them to finish
         loop = asyncio.get_event_loop()
@@ -221,25 +247,27 @@ def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
+@click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, log_level: str = "NONE") -> Try:
+def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, scihub_on_fail: bool = False, log_level: str = "NONE") -> Try:
     configure_logger(log_level)
     logger.debug(f"downloading {doi} to {folder}")
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
-    return try_download(doi, where, skip_existing, name)
+    return try_download(doi, where, skip_existing, name, scihub_on_fail=scihub_on_fail)
 
 
 @app.command("download_pubmed")
 @click.option('--pubmed', type=click.STRING, help="download doi")
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--skip_existing', type=click.BOOL, default=True, help="if it should skip downloading if the paper exists")
+@click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
 @click.option('--name', type=click.STRING, default=None, help="custom name, uses doi if none and pubmed id if pmid")
-def download_pubmed_command(pubmed: str, folder: str, skip_existing: bool, name: Optional[str]):
+def download_pubmed_command(pubmed: str, folder: str, skip_existing: bool, name: Optional[str], scihub_on_fail: bool = False):
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
     custom_name = pubmed if name == "pmid" or name == "PMID" else name
-    return download_pubmed(pubmed, where, skip_existing, custom_name)
+    return download_pubmed(pubmed, where, skip_existing, custom_name, scihub_on_fail=scihub_on_fail)
 
 
 def get_access(

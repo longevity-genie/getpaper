@@ -4,7 +4,6 @@ from functools import partial
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Optional, List
-
 import click
 import pynction.monads.try_monad
 import tiktoken
@@ -200,6 +199,30 @@ def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_
     else:
         content = path.read_text(encoding="utf-8")
         return num_tokens_openai(content, model)
+
+@app.command("download_and_parse")
+@click.option('--doi', type=click.STRING, help="doi of the paper to parse")
+@click.option('--destination', type=click.STRING, default=".", help="destination folder")
+@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]), default=PDFParser.unstructured.value, help="pdf parser to choose from, unstructured by default")
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast", help="parsing strategy to be used, auto by default, unstructured parser specific")
+@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred, unstructured parser specific")
+@click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included, unstructured parser specific")
+@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
+@click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def download_and_parse_command(doi: str, destination: str, parser: str, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, recreate_parent: bool, scihub_on_fail: bool, log_level: str):
+    configure_logger(log_level)
+    from getpaper.download import try_download
+    results: Try[tuple] = try_download(doi, Path(destination), skip_if_exist=True, scihub_on_fail=scihub_on_fail)
+    paper_file: Optional[Path] = results.map(lambda v: v[1]).get_or_else_get(lambda exp: None)
+    if paper_file is None:
+        logger.error(f"could not get the paper with {doi}")
+        return None
+    else:
+        destination_folder = Path(destination)
+        logger.info(f"parsing paper {paper_file} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
+        return parse_paper(paper_file, None, PDFParser[parser], mode, strategy, infer_tables, include_page_breaks, recreate_parent)
 
 
 @app.command("parse_paper")
