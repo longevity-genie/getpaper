@@ -17,6 +17,7 @@ dependencies:
       - pycomfort>=0.0.14
       - click>=8.1.7
       - scidownl
+      - pynction
       - twine
       - python-dotenv
       - unstructured>=0.10.25
