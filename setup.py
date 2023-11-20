@@ -30,8 +30,7 @@ setup(
         'Deprecated',
         'semanticscholar>=0.5.0',
         'PyMuPDF>=1.23.6',
-        "unpywall>=0.2.2",
-        "habanero"
+        "unpywall>=0.2.2"
     ],
     extras_require={
         'selenium': ['selenium', 'webdriver-manager'],
