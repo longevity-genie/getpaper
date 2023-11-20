@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+
+import sys
+
 import loguru
 from click import Context
 
@@ -20,7 +23,10 @@ import click
 from typing import Optional
 
 
-def download_pdf_selenium(url: str, download_dir: Path, headless: bool=True, min_wait_time: int=8, max_wait_time: int=60, final_path: Optional[Path] = None) -> Path:
+def download_pdf_selenium(url: str, download_dir: Path, headless: bool=True, min_wait_time: int=8, max_wait_time: int=60, final_path: Optional[Path] = None, logger: Optional["loguru.Logger"] = None) -> Path:
+    if logger is None:
+        logger = loguru.logger
+
     download_dir.mkdir(parents=True, exist_ok=True)
     absolute_download_dir = str(download_dir.resolve())
 
@@ -35,13 +41,14 @@ def download_pdf_selenium(url: str, download_dir: Path, headless: bool=True, min
     options.set_preference("browser.download.dir", absolute_download_dir)
     options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/pdf")
 
+    logger.info(f"will use selenium firefox driver to download {url}")
     driver = webdriver.Firefox(options=options)
 
     try:
         driver.set_page_load_timeout(min_wait_time)
         driver.get(url)
     except TimeoutException:
-        print("Page load timed out but continuing with the script...")
+        logger.info(f"min download time of the {url} timed out but continuing with the selenium download script...")
 
     try:
         start_time = time.time()
@@ -90,11 +97,14 @@ def app(ctx: Context):
 @click.option('--url', type=click.STRING, required=True, help="url to download")
 @click.option('--destination', type=click.Path(exists=True), default="data/output/test/papers", help="folder to parse papers in")
 @click.option('--headless', type=click.BOOL, default=True, help="if to run in a headless mode")
-@click.option('--min_wait', type=int, default=4, help='Min waiting time')
+@click.option('--min_wait', type=int, default=12, help='Min waiting time')
 @click.option('--max_wait', type=int, default=60, help='Max waiting time')
-def selenium_download_command(url: str, destination: str, headless: bool, min_wait: int, max_wait: int):
-    loguru.logger.info(f"download {url} to {destination} in headless={headless} mode with min_wait={min_wait} and max_wait={max_wait}")
-    result = download_pdf_selenium(url, Path(destination), headless, min_wait, max_wait)
+@click.option('--final_path', type=click.Path(), default = None, help="final path")
+def selenium_download_command(url: str, destination: str, headless: bool, min_wait: int, max_wait: int, final_path: Optional[Path]):
+    logger = loguru.logger
+    logger.add(sys.stdout)
+    logger.info(f"download {url} to {destination} in headless={headless} mode with min_wait={min_wait} and max_wait={max_wait}")
+    result = download_pdf_selenium(url, Path(destination), headless, min_wait, max_wait, final_path=final_path, logger=logger)
     loguru.logger.info(f"downloaded to {result}")
     return result
 

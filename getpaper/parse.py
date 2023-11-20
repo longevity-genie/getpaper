@@ -267,11 +267,35 @@ def try_download_and_parse(doi: str,
                            infer_tables: bool = True,
                            include_page_breaks: bool = False,
                            recreate_parent: bool = True,
+                           selenium_headless: bool=True, selenium_min_wait: int=15, selenium_max_wait: int=60,
                            logger: Optional["loguru.Logger"] = None) -> Try[PaperDownload]:
+    """
+    :param doi: paper's doi
+    :param destination:
+    :param selenium_on_fail: if use selenium on download failure
+    :param scihub_on_fail:
+    :param parser:
+    :param subfolder:
+    :param do_not_reparse:
+    :param cleaning:
+    :param mode:
+    :param strategy:
+    :param infer_tables:
+    :param include_page_breaks:
+    :param recreate_parent:
+    :param selenium_headless:
+    :param selenium_min_wait:
+    :param selenium_max_wait:
+    :param logger:
+    :return:
+    """
     if logger is None:
         logger = loguru.logger
-    result: Try[PaperDownload] = try_download(doi, destination, skip_if_exist=True, selenium_on_fail=selenium_on_fail,
-                                              scihub_on_fail=scihub_on_fail, logger=logger)
+    result: Try[PaperDownload] = try_download(doi, destination, skip_if_exist=True,
+                                              scihub_on_fail=scihub_on_fail,
+                                              selenium_on_fail=selenium_on_fail, selenium_headless=selenium_headless,
+                                              selenium_min_wait=selenium_min_wait, selenium_max_wait=selenium_max_wait,
+                                              logger=logger)
     result.on_failure(lambda ex: logger.error(f"Could not resolve the paper {doi} with the following error {str(ex)}"))
     return result.map(lambda r: r.with_parsed(parse_paper(r.pdf, None, parser, recreate_parent,
                                                           subfolder, do_not_reparse, cleaning,
@@ -299,12 +323,17 @@ def try_download_and_parse(doi: str,
               help="if page breaks should be included, unstructured parser specific")
 @click.option('--recreate_parent', type=click.BOOL, default=False,
               help="if parent folder should be recreated in the new destination")
+@click.option('--selenium_headless', type=click.BOOL, default=True, help="run selenium in the headless mode")
+@click.option('--selenium_min_wait', type=click.INT, default=15, help="Min selenium timeout")
+@click.option('--selenium_max_wait', type=click.INT, default=60, help="Max selenium timeout")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
               help="logging level")
 def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, scihub_on_fail: bool, parser: str,
                                subfolder: bool, do_not_reparse: bool,
                                cleaning: bool, mode: str, strategy: str, infer_tables: bool,
-                               include_page_breaks: bool, recreate_parent: bool, log_level: str):
+                               include_page_breaks: bool, recreate_parent: bool,
+                               selenium_headless: bool, selenium_min_wait: int, selenium_max_wait: int,
+                               log_level: str):
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
         logger.add(sys.stdout, level=log_level.upper())
@@ -321,6 +350,9 @@ def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, sc
                                      infer_tables,
                                      include_page_breaks,
                                      recreate_parent,
+                                     selenium_headless,
+                                     selenium_min_wait,
+                                     selenium_max_wait,
                                      logger)
     results.on_success(lambda r: logger.info(f"Results of {doi} parsing to {r.parsed}:"))
     results.on_failure(lambda e: logger.error(str(e)))

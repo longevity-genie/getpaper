@@ -175,16 +175,22 @@ def try_download(doi: str,
                  scihub_on_fail: bool = False,
                  unpaywall_email: Optional[str] = None,
                  selenium_on_fail: bool = False,
-                 selenium_headless: bool=True, selenium_min_wait: int=8, selenium_max_wait: int=60,
+                 selenium_headless: bool=True, selenium_min_wait: int=12, selenium_max_wait: int=60,
                  logger: Optional["loguru.Logger"] = None
                  ) -> Try[PaperDownload]:
     """
     :param doi:
-    :param destination: where to put the results
+    :param destination:
     :param skip_if_exist:
     :param name:
-    :param scihub_on_fail: if sci-hub should be used as a backup resolver (False by default). Sci-hub can resolve both open-access or paywalled articles. Resolving the latest can be illegal in some of the countries. So, make sure you know what you are doing if you put True here.
-    :return: Try monad with the result
+    :param scihub_on_fail: use sci-hub on fail. Note: use it at your own risk. If the paper you download is not open-access in some countries and cases sci-hub use will not be legal
+    :param unpaywall_email:
+    :param selenium_on_fail:
+    :param selenium_headless:
+    :param selenium_min_wait:
+    :param selenium_max_wait:
+    :param logger:
+    :return:
     """
     if logger is None:
         logger = loguru.logger
@@ -208,7 +214,7 @@ def try_download(doi: str,
     try_simple = Try.of(lambda: p.with_pdf(simple_download(p.url, logger = logger)))
     if selenium_on_fail:
         from getpaper.selenium_download import download_pdf_selenium
-        before_last = try_simple.catch(lambda ex: p.with_pdf(download_pdf_selenium(p.url, destination, selenium_headless, selenium_min_wait, selenium_max_wait, final_path=paper)))
+        before_last = try_simple.catch(lambda ex: p.with_pdf(download_pdf_selenium(p.url, destination, selenium_headless, selenium_min_wait, selenium_max_wait, final_path=paper, logger=logger)))
     else:
         before_last = try_simple
     before_last.on_failure(lambda e: logger.error(e))
@@ -278,7 +284,7 @@ def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_
     with ThreadPoolExecutor(max_workers=threads) as executor:
         # Create a coroutine for each download
         coroutines = [download_async(executor, doi, destination, scihub_on_fail=scihub_on_fail) for doi in dois]
-
+        #TODO: can be problematic
         # Get the current event loop, run the downloads, and wait for all of them to finish
         loop = asyncio.get_event_loop()
         downloaded: List[PaperDownload] = loop.run_until_complete(asyncio.gather(*coroutines))
@@ -395,8 +401,9 @@ def check_access_command(dois: List[str],  log_level: str):
 @click.option('--dois', multiple=True)
 @click.option('--folder', type=click.Path(), default=".", help="where to download the paper")
 @click.option('--threads', '-t', type=int, default=5, help='Number of threads (default: 5)')
+@click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default="debug", help="logging level")
-def download_papers_command(dois: List[str], folder: str, threads: int, log_level: str):
+def download_papers_command(dois: List[str], folder: str, threads: int, scihub_on_fail: bool, log_level: str):
     """Downloads papers with the given DOIs to the specified destination."""
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
@@ -406,7 +413,7 @@ def download_papers_command(dois: List[str], folder: str, threads: int, log_leve
     # Call the actual function with the provided arguments
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
-    return download_papers(dois, where, threads, logger)
+    return download_papers(dois, where, threads, scihub_on_fail)
 
 
 if __name__ == '__main__':
