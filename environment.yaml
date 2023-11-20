@@ -20,13 +20,14 @@ dependencies:
       - pynction
       - twine
       - python-dotenv
-      - unstructured>=0.10.25
-      - unstructured-inference>=0.7.9
-      - unstructured[local-inference]
-      - unstructured.PaddleOCR
+      - pycomfort>=0.0.14
+      - click
+      - pynction
+      - langchain>=0.0.338
+      - scidownl>=1.0.2
       - Deprecated
       - semanticscholar>=0.5.0
-      - loguru
-      - langchain>=0.0.333
-      - pdfminer.six
-      #- 'git+git+https://github.com/facebookresearch/detectron2.git'
+      - PyMuPDF>=1.23.6
+      - unpywall>=0.2.2
+      - webdriver-manager
+      - selenium

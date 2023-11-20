@@ -78,6 +78,12 @@ You can also parse papers on a per-file basis, for example:
 getpaper/parse.py parse_paper --paper data/output/test/papers/10.3390/ijms22031073.pdf
 ```
 
+## Combining parsing and downloading
+
+```bash
+getpaper/parse.py download_and_parse
+```
+
 ## Count tokens
 
 To evaluate how much you want to split texts and how much embeddings will cost you it is useful to compute token number:
