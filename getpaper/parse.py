@@ -12,12 +12,13 @@ import pynction.monads.try_monad
 import tiktoken
 from click import Context
 from functional import seq
-from langchain.document_loaders import UnstructuredPDFLoader, PDFMinerLoader, PyPDFLoader, PyMuPDFLoader, PDFPlumberLoader
+from langchain.document_loaders import UnstructuredPDFLoader, PDFMinerLoader, PyPDFLoader, PyMuPDFLoader, \
+    PDFPlumberLoader
 from langchain.schema import Document
 from pycomfort.files import traverse, files
 from pynction import Try
 import loguru
-from getpaper.download import try_download
+from getpaper.download import try_download, PaperDownload
 
 from pycomfort.config import configure_logger, LOG_LEVELS, LogLevel
 
@@ -36,6 +37,7 @@ def num_tokens_openai(string: str, model: str, price_per_1k: float = 0.0001) -> 
     n_tokens = len(encoding.encode(string))
     return n_tokens, n_tokens / 1000.0 * price_per_1k
 
+
 """
     Model	Input	Output
 8K context	$0.03 / 1K tokens	$0.06 / 1K tokens
@@ -43,11 +45,12 @@ def num_tokens_openai(string: str, model: str, price_per_1k: float = 0.0001) -> 
 """
 
 openai_prices_per_thousand = {
-    "gpt-4-32k": None, #32,768 tokens
-    "gpt-4": 0.03, #8,192 tokens
-    "gpt-3.5-turbo-16k": None, #16,384 tokens,
-    "gpt-3.5-turbo": None #4,096 tokens
+    "gpt-4-32k": None,  # 32,768 tokens
+    "gpt-4": 0.03,  # 8,192 tokens
+    "gpt-3.5-turbo-16k": None,  # 16,384 tokens,
+    "gpt-3.5-turbo": None  # 4,096 tokens
 }
+
 
 def clean_text(text: str) -> str:
     from unstructured.cleaners.core import clean, group_broken_paragraphs, replace_unicode_quotes
@@ -80,7 +83,8 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     if logger is None:
         logger = loguru.logger
     if parser is None or parser == PDFParser.unstructured:
-        loader = init_unstructured_loader(open(str(paper), "rb"), include_page_breaks, mode, pdf_infer_table_structure, strategy)
+        loader = init_unstructured_loader(open(str(paper), "rb"), include_page_breaks, mode, pdf_infer_table_structure,
+                                          strategy)
     elif parser == PDFParser.pdf_miner:
         loader = PDFMinerLoader(str(paper))
     elif parser == PDFParser.py_mu_pdf:
@@ -90,7 +94,8 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     elif parser == PDFParser.pdfplumber:
         loader = PDFPlumberLoader(str(paper))
     elif parser == PDFParser.unstructured:
-        loader = init_unstructured_loader(open(str(paper), "rb"), include_page_breaks, mode, pdf_infer_table_structure, strategy)
+        loader = init_unstructured_loader(open(str(paper), "rb"), include_page_breaks, mode, pdf_infer_table_structure,
+                                          strategy)
     else:
         loader = PDFPlumberLoader(str(paper))
     where = paper.parent if folder is None else folder / paper.parent.name if recreate_parent else folder
@@ -112,7 +117,8 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
         return [upd_where] if subfolder else acc
 
 
-def write_parsed(doc: Document, paper: Path, where: Path, cleaning: bool = False, i: int = -1, logger: Optional["loguru.Logger"] = None):
+def write_parsed(doc: Document, paper: Path, where: Path, cleaning: bool = False, i: int = -1,
+                 logger: Optional["loguru.Logger"] = None):
     if logger is None:
         logger = loguru.logger
     name = f"{paper.stem}_{i}.txt" if i >= 0 else f"{paper.stem}.txt"
@@ -140,7 +146,9 @@ def try_parse_paper(paper: Path, folder: Optional[Path] = None,
                     include_page_breaks: bool = False,
                     logger: Optional["loguru.Logger"] = None
                     ) -> Try[List[Path]]:
-    return Try.of(lambda: parse_paper(paper, folder, parser, recreate_parent, cleaning, subfolder, do_not_reparse, mode, strategy, pdf_infer_table_structure, include_page_breaks, logger=logger))
+    return Try.of(
+        lambda: parse_paper(paper, folder, parser, recreate_parent, cleaning, subfolder, do_not_reparse, mode, strategy,
+                            pdf_infer_table_structure, include_page_breaks, logger=logger))
 
 
 def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
@@ -184,8 +192,8 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
 
     with Pool(cores) as p:
         parse_func = partial(try_parse_paper, folder=destination, parser=parser,
-                             recreate_parent = recreate_parent, subfolder=subfolder, do_not_reparse=do_not_reparse,
-                             cleaning = cleaning,
+                             recreate_parent=recreate_parent, subfolder=subfolder, do_not_reparse=do_not_reparse,
+                             cleaning=cleaning,
                              mode=mode, strategy=strategy,
                              pdf_infer_table_structure=pdf_infer_table_structure,
                              include_page_breaks=include_page_breaks, logger=logger
@@ -208,17 +216,19 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
 @click.group(invoke_without_command=False)
 @click.pass_context
 def app(ctx: Context):
-    #if ctx.invoked_subcommand is None:
+    # if ctx.invoked_subcommand is None:
     #    click.echo('Running the default command...')
     #    test_index()
     pass
+
 
 @app.command("count_tokens")
 @click.option('--path', type=click.Path(exists=True), help="folder to parse papers in")
 @click.option('--model', default='gpt-3.5-turbo-16k', help='model to use, gpt-3.5-turbo-16k by default')
 @click.option("--suffix", default=".txt", help="suffix in the files to evaluate, .txt by default")
-@click.option("--price", type=click.FLOAT, default=0.0001, help = "price for 1K tokens")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+@click.option("--price", type=click.FLOAT, default=0.0001, help="price for 1K tokens")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
+              help="logging level")
 def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_level: str):
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
@@ -236,117 +246,139 @@ def count_tokens_command(path: Path, model: str, suffix: str, price: float, log_
         num_max = num.max()
         money_max = money.max()
         logger.info(f"Checked {len(papers)} papers. TOTAL TOKENS = {num_sum} , COST = {money_sum}")
-        logger.info(f"PER PAPER: \n average tokens {num_avg} , cost {money_avg}\n max tokens = {num_max} , max cost = {money_max}")
+        logger.info(
+            f"PER PAPER: \n average tokens {num_avg} , cost {money_avg}\n max tokens = {num_max} , max cost = {money_max}")
         return num, money
     else:
         content = path.read_text(encoding="utf-8")
         return num_tokens_openai(content, model)
 
 
-def download_and_parse(doi: str,
-                       destination: Path,
-                       selenium_on_fail: bool = False,
-                       scihub_on_fail: bool = False,
-                       parser: PDFParser = PDFParser.py_mu_pdf.value,
-                       subfolder: bool = True,
-                       do_not_reparse: bool = True,
-                       cleaning: bool = False,
-                       mode: str = "single",
-                       strategy: str = "fast",
-                       infer_tables: bool = True,
-                       include_page_breaks: bool = False,
-                       recreate_parent: bool = True,
-                       logger: Optional["loguru.Logger"] = None) -> list[Path]:
+def try_download_and_parse(doi: str,
+                           destination: Path,
+                           selenium_on_fail: bool = False,
+                           scihub_on_fail: bool = False,
+                           parser: PDFParser = PDFParser.py_mu_pdf.value,
+                           subfolder: bool = True,
+                           do_not_reparse: bool = True,
+                           cleaning: bool = False,
+                           mode: str = "single",
+                           strategy: str = "fast",
+                           infer_tables: bool = True,
+                           include_page_breaks: bool = False,
+                           recreate_parent: bool = True,
+                           logger: Optional["loguru.Logger"] = None) -> Try[PaperDownload]:
     if logger is None:
         logger = loguru.logger
-    result: Try[Optional[Path]] = try_download(doi, destination, skip_if_exist=True, selenium_on_fail=selenium_on_fail, scihub_on_fail=scihub_on_fail, logger=logger).map(lambda v: v.pdf)
+    result: Try[PaperDownload] = try_download(doi, destination, skip_if_exist=True, selenium_on_fail=selenium_on_fail,
+                                              scihub_on_fail=scihub_on_fail, logger=logger)
     result.on_failure(lambda ex: logger.error(f"Could not resolve the paper {doi} with the following error {str(ex)}"))
-    paper_file: Optional[Path] = result.get_or_else_get(lambda exp: None)
-    logger.info(f"parsing paper {paper_file} with mode={mode}, destination folder {destination}")
-    if paper_file is not None:
-        return parse_paper(paper_file, None, parser, recreate_parent,
-                           subfolder, do_not_reparse,  cleaning,
-                           mode, strategy, infer_tables, include_page_breaks)
-    else:
-        logger.error(f"failed to download/parse")
-        return []
+    return result.map(lambda r: r.with_parsed(parse_paper(r.pdf, None, parser, recreate_parent,
+                                                          subfolder, do_not_reparse, cleaning,
+                                                          mode, strategy, infer_tables, include_page_breaks)))
+
 
 @app.command("download_and_parse")
-@click.option('--doi', type=click.STRING, required = True, help="doi of the paper to parse")
+@click.option('--doi', type=click.STRING, required=True, help="doi of the paper to parse")
 @click.option('--folder', type=click.STRING, default=".", help="destination folder")
 @click.option('--selenium_on_fail', type=click.BOOL, default=False, help="use selenium for cases when it fails")
-@click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
-@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]), default=PDFParser.py_mu_pdf.value, help="pdf parser to choose from, unstructured by default")
+@click.option('--scihub_on_fail', type=click.BOOL, default=False,
+              help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
+@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]), default=PDFParser.py_mu_pdf.value,
+              help="pdf parser to choose from, unstructured by default")
 @click.option('--subfolder', type=click.BOOL, default=True, help="if it should create a folder per paper")
 @click.option('--do_not_reparse', type=click.BOOL, default=True, help="if we should avoid reparsing")
 @click.option('--cleaning', type=click.BOOL, default=False, help="if we should use basic cleaning for the text")
-@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
-@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast", help="parsing strategy to be used, auto by default, unstructured parser specific")
-@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred, unstructured parser specific")
-@click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included, unstructured parser specific")
-@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def download_and_parse_command(doi: str, folder: str,  selenium_on_fail: bool, scihub_on_fail: bool, parser: str,
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single",
+              help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast",
+              help="parsing strategy to be used, auto by default, unstructured parser specific")
+@click.option('--infer_tables', type=click.BOOL, default=True,
+              help="if the table structure should be inferred, unstructured parser specific")
+@click.option('--include_page_breaks', type=click.BOOL, default=False,
+              help="if page breaks should be included, unstructured parser specific")
+@click.option('--recreate_parent', type=click.BOOL, default=False,
+              help="if parent folder should be recreated in the new destination")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
+              help="logging level")
+def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, scihub_on_fail: bool, parser: str,
                                subfolder: bool, do_not_reparse: bool,
                                cleaning: bool, mode: str, strategy: str, infer_tables: bool,
                                include_page_breaks: bool, recreate_parent: bool, log_level: str):
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
         logger.add(sys.stdout, level=log_level.upper())
-    results = download_and_parse(doi,
-                                 Path(folder),
-                                 selenium_on_fail,
-                                 scihub_on_fail,
-                                 PDFParser[parser],
-                                 subfolder,
-                                 do_not_reparse,
-                                 cleaning,
-                                 mode,
-                                 strategy,
-                                 infer_tables,
-                                 include_page_breaks,
-                                 recreate_parent,
-                                 logger)
-    logger.info(f"Results of {doi} parsing to {folder}:")
-    logger.info(results)
+    results = try_download_and_parse(doi,
+                                     Path(folder),
+                                     selenium_on_fail,
+                                     scihub_on_fail,
+                                     PDFParser[parser],
+                                     subfolder,
+                                     do_not_reparse,
+                                     cleaning,
+                                     mode,
+                                     strategy,
+                                     infer_tables,
+                                     include_page_breaks,
+                                     recreate_parent,
+                                     logger)
+    results.on_success(lambda r: logger.info(f"Results of {doi} parsing to {r.parsed}:"))
+    results.on_failure(lambda e: logger.error(str(e)))
     return results
+
 
 @app.command("parse_paper")
 @click.option('--paper', type=click.Path(exists=True), help="paper pdf to parse")
 @click.option('--destination', type=click.STRING, default=".", help="destination folder")
-@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]), default=PDFParser.unstructured.value, help="pdf parser to choose from, unstructured by default")
-@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
+@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]),
+              default=PDFParser.unstructured.value, help="pdf parser to choose from, unstructured by default")
+@click.option('--recreate_parent', type=click.BOOL, default=False,
+              help="if parent folder should be recreated in the new destination")
 @click.option('--subfolder', type=click.BOOL, default=True, help="if it should create a folder per paper")
 @click.option('--do_not_reparse', type=click.BOOL, default=True, help="if we should avoid reparsing")
-@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
-@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast", help="parsing strategy to be used, auto by default, unstructured parser specific")
-@click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred, unstructured parser specific")
-@click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included, unstructured parser specific")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def parse_paper_command(paper: str, destination: str, parser: str, recreate_parent: bool, subfolder: bool, do_not_reparse: bool, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool, log_level: str):
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single",
+              help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast",
+              help="parsing strategy to be used, auto by default, unstructured parser specific")
+@click.option('--infer_tables', type=click.BOOL, default=True,
+              help="if the table structure should be inferred, unstructured parser specific")
+@click.option('--include_page_breaks', type=click.BOOL, default=False,
+              help="if page breaks should be included, unstructured parser specific")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
+              help="logging level")
+def parse_paper_command(paper: str, destination: str, parser: str, recreate_parent: bool, subfolder: bool,
+                        do_not_reparse: bool, mode: str, strategy: str, infer_tables: bool, include_page_breaks: bool,
+                        log_level: str):
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
         logger.add(sys.stdout, level=log_level.upper())
     paper_file = Path(paper)
     destination_folder = Path(destination)
-    logger.info(f"parsing paper {paper} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_paper(paper_file, None, PDFParser[parser], recreate_parent, True, subfolder, do_not_reparse, mode, strategy, infer_tables, include_page_breaks)
+    logger.info(
+        f"parsing paper {paper} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
+    return parse_paper(paper_file, None, PDFParser[parser], recreate_parent, True, subfolder, do_not_reparse, mode,
+                       strategy, infer_tables, include_page_breaks)
 
 
 @app.command("parse_folder")
 @click.option('--folder', type=click.Path(exists=True), help="folder to parse papers in")
 @click.option('--destination', type=click.STRING, default=None, help="destination folder")
-@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]), default=PDFParser.unstructured.value, help="pdf parser to choose from, unstructured by default")
-@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single", help="paper mode to be used")
-@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast", help="parsing strategy to be used, auto by default")
+@click.option('--parser', type=click.Choice([loader.value for loader in PDFParser]),
+              default=PDFParser.unstructured.value, help="pdf parser to choose from, unstructured by default")
+@click.option('--mode', type=click.Choice(["single", "elements", "paged"]), default="single",
+              help="paper mode to be used")
+@click.option('--strategy', type=click.Choice(["auto", "hi_res", "fast"]), default="fast",
+              help="parsing strategy to be used, auto by default")
 @click.option('--infer_tables', type=click.BOOL, default=True, help="if the table structure should be inferred")
 @click.option('--include_page_breaks', type=click.BOOL, default=False, help="if page breaks should be included")
 @click.option('--cores', '-t', type=int, default=None, help='Number of cores to use')
-@click.option('--recreate_parent', type=click.BOOL, default=False, help="if parent folder should be recreated in the new destination")
+@click.option('--recreate_parent', type=click.BOOL, default=False,
+              help="if parent folder should be recreated in the new destination")
 @click.option('--cleaning', type=click.BOOL, default=True, help="if we should use basic cleaning for the text")
 @click.option('--subfolder', type=click.BOOL, default=True, help="if it should create a folder per paper")
 @click.option('--do_not_reparse', type=click.BOOL, default=True, help="if we should avoid reparsing")
-@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
+              help="logging level")
 def parse_folder_command(folder: str, destination: str, parser: str, mode: str, strategy: str, infer_tables: bool,
                          include_page_breaks: bool, cores: Optional[int],
                          recreate_parent: bool, cleaning: bool,
@@ -356,8 +388,10 @@ def parse_folder_command(folder: str, destination: str, parser: str, mode: str, 
         logger.add(sys.stdout, level=log_level.upper())
     parse_folder = Path(folder)
     destination_folder = Path(destination) if destination is not None else None
-    logger.info(f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
-    return parse_papers(parse_folder, destination_folder, PDFParser[parser], recreate_parent, cores, subfolder, do_not_reparse,  cleaning, mode, strategy, infer_tables, include_page_breaks, logger)
+    logger.info(
+        f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
+    return parse_papers(parse_folder, destination_folder, PDFParser[parser], recreate_parent, cores, subfolder,
+                        do_not_reparse, cleaning, mode, strategy, infer_tables, include_page_breaks, logger)
 
 
 if __name__ == '__main__':

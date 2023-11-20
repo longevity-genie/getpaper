@@ -32,7 +32,7 @@ class PaperDownload:
     id: str
     pdf: Optional[Path]
     metadata: Optional[Path]
-    parsed: Optional[Path] = None
+    parsed: Optional[list[Path]] = None
     url: Optional[str] = None
 
     def with_pdf(self, pdf: Path):
@@ -41,6 +41,10 @@ class PaperDownload:
 
     def with_url(self, url: str):
         self.url = url
+        return self
+
+    def with_parsed(self, parsed: Optional[list[Path]]):
+        self.parsed = parsed
         return self
 
 def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create_parent: bool = True) -> Path:
