@@ -268,6 +268,7 @@ def try_download_and_parse(doi: str,
                            include_page_breaks: bool = False,
                            recreate_parent: bool = True,
                            selenium_headless: bool=True, selenium_min_wait: int=15, selenium_max_wait: int=60,
+                           unpaywall_email: Optional[str] = None,
                            logger: Optional["loguru.Logger"] = None) -> Try[PaperDownload]:
     """
     :param doi: paper's doi
@@ -295,6 +296,7 @@ def try_download_and_parse(doi: str,
                                               scihub_on_fail=scihub_on_fail,
                                               selenium_on_fail=selenium_on_fail, selenium_headless=selenium_headless,
                                               selenium_min_wait=selenium_min_wait, selenium_max_wait=selenium_max_wait,
+                                              unpaywall_email=unpaywall_email,
                                               logger=logger)
     result.on_failure(lambda ex: logger.error(f"Could not resolve the paper {doi} with the following error {str(ex)}"))
     return result.map(lambda r: r.with_parsed(parse_paper(r.pdf, None, parser, recreate_parent,
@@ -326,6 +328,7 @@ def try_download_and_parse(doi: str,
 @click.option('--selenium_headless', type=click.BOOL, default=True, help="run selenium in the headless mode")
 @click.option('--selenium_min_wait', type=click.INT, default=15, help="Min selenium timeout")
 @click.option('--selenium_max_wait', type=click.INT, default=60, help="Max selenium timeout")
+@click.option('--unpaywall_email', type=click.STRING, default="antonkulaga@gmail.com", help="Unpaywall email to use for pdf resolution")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value,
               help="logging level")
 def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, scihub_on_fail: bool, parser: str,
@@ -333,6 +336,7 @@ def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, sc
                                cleaning: bool, mode: str, strategy: str, infer_tables: bool,
                                include_page_breaks: bool, recreate_parent: bool,
                                selenium_headless: bool, selenium_min_wait: int, selenium_max_wait: int,
+                               unpaywall_email: Optional[str],
                                log_level: str):
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
@@ -353,6 +357,7 @@ def download_and_parse_command(doi: str, folder: str, selenium_on_fail: bool, sc
                                      selenium_headless,
                                      selenium_min_wait,
                                      selenium_max_wait,
+                                     unpaywall_email,
                                      logger)
     results.on_success(lambda r: logger.info(f"Results of {doi} parsing to {r.parsed}:"))
     results.on_failure(lambda e: logger.error(str(e)))

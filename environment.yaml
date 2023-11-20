@@ -31,3 +31,4 @@ dependencies:
       - unpywall>=0.2.2
       - webdriver-manager
       - selenium
+      - habanero

@@ -112,6 +112,7 @@ def resolve_semantic_scholar(paper_id: str,
                               logger: Optional["loguru.Logger"] = None) -> PaperDownload:
     if logger is None:
         logger = loguru.logger
+    logger.info(f"RESOLVING PAPER {paper_id} with meta and {metadata}")
     sch = SemanticScholar()
     paper: Paper = sch.get_paper(paper_id)
     if metadata is not None:
@@ -127,7 +128,7 @@ def resolve_semantic_scholar(paper_id: str,
 
 #@logger.catch(reraise=False)
 def download_semantic_scholar(paper_id: str,
-                              download,
+                              download: Path,
                               metadata: Optional[Path] = None,
                               raise_on_no_pdf: bool = False,
                               headers: Optional[dict] = None,
@@ -144,7 +145,7 @@ def download_semantic_scholar(paper_id: str,
     if paper.openAccessPdf is not None and "url" in paper.openAccessPdf:
         url = paper.openAccessPdf["url"]
         if download is not None:
-            simple_download(download, headers, logger, paper_id, url)
+            simple_download(url, download, headers, logger)
         else:
             message = f"could not find open-access pdf for {paper_id}"
             if raise_on_no_pdf:
@@ -194,24 +195,28 @@ def try_download(doi: str,
     """
     if logger is None:
         logger = loguru.logger
+    doi_prefix = "https://doi.org/"
     # for example from https://doi.org/10.1016/j.stemcr.2022.09.009
-    doi = doi.replace("https://doi.org/", "")
+    doi = doi.replace(doi_prefix, "")
     paper = _pdf_path_for_doi(doi, destination, name, True)
     meta = paper.parent / paper.name.replace(".pdf", "_meta.json")
     if skip_if_exist and paper.exists():
         if not meta.exists():
             logger.info(f"paper {paper} pdf already exists, however metadata {meta} does not, trying to download only metadata!")
-            return Try.of(lambda: download_semantic_scholar(doi, None, meta))
+            p: PaperDownload = resolve_semantic_scholar(doi, meta)
+            p.pdf = paper
+            return Try.of(p)
+            #return Try.of(lambda: download_semantic_scholar(doi, paper, meta))
         else:
             logger.info(f"paper {paper} already exists, skipping!")
             return Try.of(lambda: PaperDownload(doi, paper, meta))
     p: PaperDownload = resolve_semantic_scholar(doi, meta)
     if unpaywall_email is not None:
-        unpaywall_email = os.getenv("UNPAYWALL_MAIL")
+        unpaywall_email = os.getenv("UNPAYWALL_EMAIL")
     if unpaywall_email is not None and p.url is None:
-        UnpywallCredentials()
+        UnpywallCredentials(unpaywall_email)
         p.url = Unpywall.get_pdf_link(doi)
-    try_simple = Try.of(lambda: p.with_pdf(simple_download(p.url, logger = logger)))
+    try_simple = Try.of(lambda: p.with_pdf(simple_download(p.url, paper, logger = logger)))
     if selenium_on_fail:
         from getpaper.selenium_download import download_pdf_selenium
         before_last = try_simple.catch(lambda ex: p.with_pdf(download_pdf_selenium(p.url, destination, selenium_headless, selenium_min_wait, selenium_max_wait, final_path=paper, logger=logger)))
@@ -334,6 +339,7 @@ def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool
 @click.option('--name', type=click.STRING, default=None, help="custom name, used doi of none")
 @click.option('--selenium_on_fail', type=click.BOOL, default=False, help="use selenium for cases when it fails")
 @click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
+@click.option('--unpaywall_email', type=click.STRING, default="antonkulaga@gmail.com", help="Unpaywall email to use for pdf resolution")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, selenium_on_fail: bool = False, scihub_on_fail: bool = False, log_level: str = "NONE") -> Try:
     from loguru import logger

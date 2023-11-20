@@ -30,7 +30,7 @@ download download_pubmed --pubmed 22266545 --folder "data/output/test/papers" --
 ```
 Downloads the paper with pubmed id into the folder 'papers' and uses the pubmed id as name
 ```bash
-download download_doi --doi 10.1519/JSC.0b013e318225bbae --folder "data/output/test/papers"
+download download_doi --doi 10.1038/s41597-020-00710-z --folder "data/output/test/papers"
 ```
 Downloads the paper with DOI into the folder papers, as --name is not specified doi is used as name
 
@@ -81,7 +81,7 @@ getpaper/parse.py parse_paper --paper data/output/test/papers/10.3390/ijms220310
 ## Combining parsing and downloading
 
 ```bash
-getpaper/parse.py download_and_parse
+getpaper/parse.py download_and_parse --doi 10.1038/s41597-020-00710-z
 ```
 
 ## Count tokens
