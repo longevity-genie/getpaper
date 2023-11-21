@@ -62,7 +62,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
                 recreate_parent: bool = False,
                 subfolder: bool = True,
                 do_not_reparse: bool = True,
-                cleaning: bool = True,
+                cleaning: bool = False,
                 mode: str = "single", strategy: str = "auto",
                 pdf_infer_table_structure: bool = True,
                 include_page_breaks: bool = False,
@@ -104,8 +104,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
     upd_where: Path = (where / paper.stem) if subfolder else where
     upd_where.mkdir(exist_ok=True)
     if upd_where.exists() and subfolder and do_not_reparse and files(upd_where).len() > 0:
-        logger.info(f"avoiding reparsing, providing result {upd_where}")
-        print(f"avoiding reparsing, providing result {upd_where}")
+        logger.info(f"avoiding re-parsing, providing result {upd_where}")
         return [upd_where]
     if len(docs) == 1:
         return [upd_where] if subfolder else [write_parsed(docs[0], paper, upd_where, cleaning)]

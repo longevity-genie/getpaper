@@ -26,6 +26,7 @@ from typing import Optional
 def download_pdf_selenium(url: str, download_dir: Path, headless: bool=True, min_wait_time: int=8, max_wait_time: int=60, final_path: Optional[Path] = None, logger: Optional["loguru.Logger"] = None) -> Path:
     if logger is None:
         logger = loguru.logger
+    logger.trace(f"selenium parameters url {url}, download_dir {download_dir}, headless {headless}, min_wait_time {min_wait_time}, max wait time {max_wait_time}, final path {final_path}")
 
     download_dir.mkdir(parents=True, exist_ok=True)
     absolute_download_dir = str(download_dir.resolve())

@@ -35,6 +35,12 @@ class PaperDownload:
     parsed: Optional[list[Path]] = None
     url: Optional[str] = None
 
+    def get_paper_folder(self) -> Optional[Path]:
+        if self.pdf is None:
+            return None
+        else:
+            return self.pdf.parent / self.pdf.stem
+
     def with_pdf(self, pdf: Path):
         self.pdf = pdf
         return self
@@ -201,29 +207,27 @@ def try_download(doi: str,
     paper = _pdf_path_for_doi(doi, destination, name, True)
     meta = paper.parent / paper.name.replace(".pdf", "_meta.json")
     if skip_if_exist and paper.exists():
-        if not meta.exists():
-            logger.info(f"paper {paper} pdf already exists, however metadata {meta} does not, trying to download only metadata!")
-            p: PaperDownload = resolve_semantic_scholar(doi, meta)
-            p.pdf = paper
-            return Try.of(p)
-            #return Try.of(lambda: download_semantic_scholar(doi, paper, meta))
-        else:
-            logger.info(f"paper {paper} already exists, skipping!")
-            return Try.of(lambda: PaperDownload(doi, paper, meta))
-    p: PaperDownload = resolve_semantic_scholar(doi, meta)
+        p = PaperDownload(doi, paper, meta)
+        if p.parsed is None and p.get_paper_folder() is not None:
+            p.parsed = [p.get_paper_folder()]
+        logger.info(f"paper {paper} already exists, skipping!")
+        return Try.of(lambda: p)
+
+    p: PaperDownload = resolve_semantic_scholar(doi, meta, logger)
     if unpaywall_email is not None:
         unpaywall_email = os.getenv("UNPAYWALL_EMAIL")
     if unpaywall_email is not None and p.url is None:
         UnpywallCredentials(unpaywall_email)
         p.url = Unpywall.get_pdf_link(doi)
     try_simple = Try.of(lambda: p.with_pdf(simple_download(p.url, paper, logger = logger)))
-    if selenium_on_fail:
+    if selenium_on_fail and p.url is not None:
         from getpaper.selenium_download import download_pdf_selenium
+        logger.trace(f"paper to download with selenium is {p}")
         before_last = try_simple.catch(lambda ex: p.with_pdf(download_pdf_selenium(p.url, destination, selenium_headless, selenium_min_wait, selenium_max_wait, final_path=paper, logger=logger)))
     else:
         before_last = try_simple
     before_last.on_failure(lambda e: logger.error(e))
-    return before_last.catch(lambda _: schihub_doi(doi, paper, meta)) if scihub_on_fail else before_last
+    return before_last.catch(lambda _: schihub_doi(doi, paper, meta, logger)) if scihub_on_fail else before_last
 
 
 def download_pubmed(pubmed: str, destination: Path, skip_if_exist: bool = True, name: Optional[str] = None, scihub_on_fail: bool = False):
