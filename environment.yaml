@@ -1,7 +1,6 @@
 name: getpaper
 channels:
   - conda-forge
-  - bioconda
   - pytorch
   - plotly
   - defaults
@@ -14,7 +13,8 @@ dependencies:
   - pdfplumber
   - jupyterlab #for examples only
   - pip:
-      - pycomfort>=0.0.14
+      - pydantic==1.10.12
+      - pycomfort>=0.0.15
       - click>=8.1.7
       - scidownl
       - pynction
@@ -23,7 +23,8 @@ dependencies:
       - pycomfort>=0.0.14
       - click
       - pynction
-      - langchain>=0.0.338
+      - langchain>=0.1.0
+      - langchain_community>=0.0.11
       - scidownl>=1.0.2
       - Deprecated
       - semanticscholar>=0.5.0

@@ -345,7 +345,7 @@ def download_semantic_scholar_command(doi: str, folder: str, skip_existing: bool
 @click.option('--scihub_on_fail', type=click.BOOL, default=False, help="if schihub should be used as backup resolver. Use it at your own risk and responsibility (false by default)")
 @click.option('--unpaywall_email', type=click.STRING, default="antonkulaga@gmail.com", help="Unpaywall email to use for pdf resolution")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, selenium_on_fail: bool = False, scihub_on_fail: bool = False, log_level: str = "NONE") -> Try:
+def download_doi_command(doi: str, folder: str, skip_existing: bool = True, name: Optional[str] = None, selenium_on_fail: bool = False, scihub_on_fail: bool = False, unpaywall_email: str="antonkulaga@gmail.com", log_level: str = "NONE") -> Try:
     from loguru import logger
     if log_level.upper() != LogLevel.NONE.value:
         logger.add(sys.stdout, level=log_level.upper())

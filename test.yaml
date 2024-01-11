@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: MyDisease.info API
+  version: '1.0'
+servers:
+  - description: Encrypted Production server
+    url: https://mydisease.info/v1
+    x-maturity: production
+paths:
+  /query:
+    get:
+      summary: Query for disease information
+      operationId: queryDiseaseInformation
+      parameters:
+        - name: q
+          in: query
+          description: User query (required)
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          description: Comma-separated fields to limit the response (optional)
+          schema:
+            type: string
+            default: "mondo.label,mondo.definition,mondo.synonym"
+        - name: size
+          in: query
+          description: Maximum number of results to return (optional)
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: A 200 status code indicates a successful query, and is accompanied by the query response payload.
+          content: "application/json"
+          schema:
+            type: object
+            properties:
+              took:
+                type: integer
+              total:
+                type: integer
+              max_score:
+                type: number
+              hits:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    _score:
+                      type: number
+                    mondo:
+                      type: object
+                      properties:
+                        label:
+                          type: string
+                        synonym:
+                          type: object
+                          properties:
+                            exact:
+                              type: array
+                              items:
+                                type: string
+                            related:
+                              type: array
+                              items:
+                                type: string
+            required:
+              - took
+              - total
+              - max_score
+              - hits

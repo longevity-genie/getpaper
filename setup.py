@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.4.7'
+VERSION = '0.4.8'
 DESCRIPTION = 'getpaper - papers download made easy!'
 LONG_DESCRIPTION = 'A package with python functions for downloading papers'
 
@@ -22,14 +22,15 @@ setup(
     long_description=long_description,
     packages=find_packages(),
     install_requires=[
-        'pycomfort>=0.0.14',
+        'pycomfort>=0.0.15',
         'click',
         'pynction',
-        'langchain>=0.0.338',
+        'langchain>=0.1.0',
+        'langchain_community>=0.0.11',
         'scidownl>=1.0.2',
+        'semanticscholar>=0.7.0',
         'Deprecated',
-        'semanticscholar>=0.5.0',
-        'PyMuPDF>=1.23.6',
+        'PyMuPDF>=1.23.8',
         "unpywall>=0.2.2"
     ],
     extras_require={
@@ -37,7 +38,7 @@ setup(
         'unstructured': [
             'pdfminer.six',
             'unstructured>=0.10.25',
-            'unstructured-inference>=0.7.9',
+            'unstructured-inference>=0.7.21',
             'unstructured[local-inference]',
             'unstructured.PaddleOCR>=2.6.1.3'
             #'git+https://github.com/facebookresearch/detectron2.git'

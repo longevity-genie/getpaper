@@ -5,9 +5,9 @@ from typing import List
 
 import click
 from click import Context
+from pycomfort.config import configure_logger
 from pynction import Try
 
-from getpaper.clean import proofread
 from getpaper.download import download_papers
 from getpaper.parse import parse_papers
 
@@ -60,6 +60,7 @@ def parse_papers_command():
     destination_folder.mkdir(exist_ok=True, parents=True)
     return parse_papers(papers_folder, destination_folder, recreate_parent=True)
 
+"""
 @app.command("clean")
 def clean_command():
     papers_folder = Path("./data/output/test/parsed_papers").absolute().resolve()
@@ -73,8 +74,9 @@ def clean_command():
     #print(f"RESULTS WILL BE WRITTEN TO {paper_improved}")
     print("CLEAN PAPER IS TEMPORALY NOT WORKING")
     #return clean_paper(paper)
-
 """
+
+
 @app.command("doi_download_parse_index")
 @click.option('--doi', type=click.STRING, default="10.3390/ijms22031073", help="download doi")
 @click.option("--strategy", type=click.Choice(["auto", "hi_res", "fast"]), default = "auto", help="strategy used to convert the page")
@@ -94,7 +96,6 @@ def doi_download_parse_index_command(doi: str, strategy: str = "fast", log_level
     logger.info(f"printing part of the collection content of length {example_collection.count()}")
     top_3 = example_collection.get(limit=3, include=["embeddings", "metadatas", "documents"])
     #logger.info(f"TOP-3 IS {top_3}")
-"""
 
 if __name__ == '__main__':
     app()

@@ -1,6 +1,8 @@
 # getpaper
 Paper downloader
 
+WARNING: temporally broken with last update
+
 # getting started
 
 Install the library with:

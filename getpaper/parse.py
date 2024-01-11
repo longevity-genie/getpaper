@@ -12,8 +12,7 @@ import pynction.monads.try_monad
 import tiktoken
 from click import Context
 from functional import seq
-from langchain.document_loaders import UnstructuredPDFLoader, PDFMinerLoader, PyPDFLoader, PyMuPDFLoader, \
-    PDFPlumberLoader
+from langchain_community.document_loaders import UnstructuredPDFLoader, PDFMinerLoader, PyPDFLoader, PyMuPDFLoader, PDFPlumberLoader
 from langchain.schema import Document
 from pycomfort.files import traverse, files
 from pynction import Try
