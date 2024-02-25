@@ -25,6 +25,7 @@ import sys
 from pycomfort.config import LOG_LEVELS, configure_logger, LogLevel
 from unpywall import Unpywall
 from unpywall.utils import UnpywallCredentials
+import nest_asyncio
 
 #DownloadedPaper = (str, Optional[Path], Optional[Path]) #type synonim for doi, Path, Path of the downloaded paper
 @dataclass
@@ -54,7 +55,15 @@ class PaperDownload:
         return self
 
 def _pdf_path_for_doi(doi: str, folder: Path, name: Optional[str] = None, create_parent: bool = True) -> Path:
-    result = (folder / f"{doi}.pdf").absolute().resolve() if name is None else (folder / f"{name.replace('.pdf', '')}.pdf").abewsw1wswqssolute().resolve()
+    """
+    computes path for the paper PDF
+    :param doi:
+    :param folder:
+    :param name:
+    :param create_parent:
+    :return:
+    """
+    result = (folder / f"{doi}.pdf").absolute().resolve() if name is None else (folder / f"{name.replace('.pdf', '')}.pdf").absolute().resolve()
     if create_parent:
         if not result.parent.exists():
             result.parent.mkdir(exist_ok=True, parents=True)
@@ -269,6 +278,8 @@ async def download_async(executor: Executor,
     if logger is None:
         logger = loguru.logger
 
+    nest_asyncio.apply()
+
     paper = _pdf_path_for_doi(doi, destination, name, True)
     meta = paper.parent / paper.name.replace(".pdf", "_meta.json")
 
@@ -281,7 +292,7 @@ async def download_async(executor: Executor,
     return PaperDownload(doi, paper, meta)
 
 
-def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_fail: bool = False) -> (OrderedDict[str, PaperDownload], List[str]):
+def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_fail: bool = False, logger: Optional["loguru.Logger"] = None) -> (OrderedDict[str, PaperDownload], List[str]):
     """
     :param dois: List of DOIs of the papers to download
     :param destination: Directory where to put the downloaded papers
@@ -289,6 +300,7 @@ def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_
     :param scihub_on_fail: if SciHub should be used as back up resolver. False by default. For paywalled articles it can be illegal in some of the countries, so use it at your own risk.
     :return: tuple with OrderedDict of succeeded results and list of failed dois)
     """
+    nest_asyncio.apply()
     # Create a ThreadPoolExecutor with desired number of threads
     with ThreadPoolExecutor(max_workers=threads) as executor:
         # Create a coroutine for each download
@@ -296,7 +308,10 @@ def download_papers(dois: List[str], destination: Path, threads: int, scihub_on_
         #TODO: can be problematic
         # Get the current event loop, run the downloads, and wait for all of them to finish
         loop = asyncio.get_event_loop()
-        downloaded: List[PaperDownload] = loop.run_until_complete(asyncio.gather(*coroutines))
+        results: List[PaperDownload | Exception] = loop.run_until_complete(asyncio.gather(*coroutines, return_exceptions=True))
+        (failed, downloaded) = seq(results).partition(lambda r: isinstance(r, Exception))
+        for f in failed:
+            logger.error(f"FAILED TO DOWNLOAD: {f}")
     partitions: List[List[PaperDownload]] = seq(downloaded).partition(lambda kv: isinstance(kv.pdf, Path)).to_list()
     return OrderedDict([(d.id, d) for d in partitions[0]]), [kv.pdf for kv in partitions[1]]
 
@@ -423,7 +438,7 @@ def download_papers_command(dois: List[str], folder: str, threads: int, scihub_o
     # Call the actual function with the provided arguments
     where = Path(folder)
     where.mkdir(exist_ok=True, parents=True)
-    return download_papers(dois, where, threads, scihub_on_fail)
+    return download_papers(dois, where, threads, scihub_on_fail, logger=logger)
 
 
 if __name__ == '__main__':

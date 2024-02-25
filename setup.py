@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.4.8'
+VERSION = '0.4.9'
 DESCRIPTION = 'getpaper - papers download made easy!'
 LONG_DESCRIPTION = 'A package with python functions for downloading papers'
 
@@ -25,13 +25,16 @@ setup(
         'pycomfort>=0.0.15',
         'click',
         'pynction',
-        'langchain>=0.1.0',
-        'langchain_community>=0.0.11',
+        'langchain>=0.1.9',
+        'langchain_community>=0.0.22',
         'scidownl>=1.0.2',
         'semanticscholar>=0.7.0',
         'Deprecated',
-        'PyMuPDF>=1.23.8',
-        "unpywall>=0.2.2"
+        'PyMuPDF>=1.23.25',
+        "unpywall>=0.2.2",
+        "nest_asyncio>=1.6.0",
+        "chardet",
+        "transformers"
     ],
     extras_require={
         'selenium': ['selenium', 'webdriver-manager'],

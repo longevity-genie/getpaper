@@ -20,15 +20,17 @@ dependencies:
       - pynction
       - twine
       - python-dotenv
-      - pycomfort>=0.0.14
       - click
       - pynction
-      - langchain>=0.1.0
-      - langchain_community>=0.0.11
+      - langchain>=0.1.9
+      - langchain_community>=0.0.22
       - scidownl>=1.0.2
       - Deprecated
-      - semanticscholar>=0.5.0
-      - PyMuPDF>=1.23.6
+      - semanticscholar>=0.7.0
+      - PyMuPDF>=1.23.25
       - unpywall>=0.2.2
       - webdriver-manager
       - selenium
+      - nest_asyncio>=1.6.0
+      - chardet
+      - transformers

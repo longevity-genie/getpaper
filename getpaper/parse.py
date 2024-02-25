@@ -106,7 +106,7 @@ def parse_paper(paper: Path, folder: Optional[Path] = None,
         logger.info(f"avoiding re-parsing, providing result {upd_where}")
         return [upd_where]
     if len(docs) == 1:
-        return [upd_where] if subfolder else [write_parsed(docs[0], paper, upd_where, cleaning)]
+        return [write_parsed(docs[0], paper, upd_where, cleaning)]
     else:
         acc = []
         for i, doc in enumerate(docs):
@@ -157,8 +157,7 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
                  cleaning: bool = False,
                  mode: str = "single", strategy: str = "auto",
                  pdf_infer_table_structure: bool = True,
-                 include_page_breaks: bool = False,
-                 logger: Optional["loguru.Logger"] = None
+                 include_page_breaks: bool = False
                  ):
     """
     Function to parse multiple papers using multiple cores.
@@ -179,10 +178,9 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
     Returns:
         list[Path], list[Failure]: A list of paths to the parsed papers and a list of Failtures
     """
-    if logger is None:
-        logger = loguru.logger
+    logger = loguru.logger
     papers: list[Path] = traverse(parse_folder, lambda p: "pdf" in p.suffix)
-    logger.info(f"indexing {len(papers)} papers")
+    loguru.logger.info(f"parsing {len(papers)} papers")
     parsed = []
     errors = []
 
@@ -194,7 +192,7 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
                              cleaning=cleaning,
                              mode=mode, strategy=strategy,
                              pdf_infer_table_structure=pdf_infer_table_structure,
-                             include_page_breaks=include_page_breaks, logger=logger
+                             include_page_breaks=include_page_breaks, logger=None # to avoid crashes
                              )
         results = p.map(parse_func, papers)
         for result in results:
@@ -204,8 +202,7 @@ def parse_papers(parse_folder: Path, destination: Optional[Path] = None,
                 errors.append(result._e)
             else:
                 logger.warning(f"unpredicted type of the {result}")
-
-    logger.info("papers parsing finished!")
+        logger.info(f"papers parsing finished! \n Parsing results: {results}")
     if len(errors) > 0:
         logger.warning(f"errors discovered: {errors}")
     return results, errors
@@ -426,7 +423,7 @@ def parse_folder_command(folder: str, destination: str, parser: str, mode: str, 
     logger.info(
         f"parsing paper {folder} with mode={mode} {'' if destination_folder is None else 'destination folder ' + destination}")
     return parse_papers(parse_folder, destination_folder, PDFParser[parser], recreate_parent, cores, subfolder,
-                        do_not_reparse, cleaning, mode, strategy, infer_tables, include_page_breaks, logger)
+                        do_not_reparse, cleaning, mode, strategy, infer_tables, include_page_breaks)
 
 
 if __name__ == '__main__':
